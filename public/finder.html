@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>ArUco Marker Finder</title>
+<style>
+  body {
+    font-family: sans-serif;
+    margin: 20px;
+  }
+
+  .control-group {
+    margin-bottom: 15px;
+  }
+
+  label {
+    display: block;
+    font-weight: bold;
+    margin-bottom: 5px;
+  }
+
+  select, button {
+    width: 100%;
+    margin-bottom: 10px;
+  }
+
+  #gridContainer {
+    display: inline-block;
+    position: relative;
+    margin-top: 20px;
+  }
+
+  .marker-row {
+    display: flex;
+  }
+
+  .marker-cell {
+    width: 20px;
+    height: 20px;
+    box-sizing: border-box;
+    border: 1px solid #ccc; /* gray grid lines */
+    cursor: pointer;
+  }
+
+  .black-cell {
+    background: black;
+  }
+
+  .white-cell {
+    background: white;
+  }
+
+  .border-cell {
+    background: black;
+    cursor: default !important;
+  }
+
+  #result {
+    margin-top: 20px;
+    font-weight: bold;
+  }
+
+</style>
+</head>
+<body>
+  <h1>ArUco Marker Finder</h1>
+
+  <div class="control-group">
+    <label for="dictionarySelect">Dictionary:</label>
+    <select id="dictionarySelect"></select>
+  </div>
+
+  <div class="control-group">
+    <button id="generateGridBtn">Generate Grid</button>
+  </div>
+
+  <div id="gridContainer"></div>
+
+  <div class="control-group">
+    <button id="checkMarkerBtn">Check Marker</button>
+  </div>
+
+  <div id="result"></div>
+
+  <!-- Dependencies -->
+  <script src="./src/cv.js"></script>
+  <script src="./src/aruco.js"></script>
+  <script src="./src/dictionaries/apriltag_16h5.js"></script> 
+  <script src="./src/dictionaries/apriltag_25h7.js"></script> 
+  <script src="./src/dictionaries/apriltag_25h9.js"></script> 
+  <script src="./src/dictionaries/apriltag_36h9.js"></script> 
+  <script src="./src/dictionaries/apriltag_36h10.js"></script> 
+  <script src="./src/dictionaries/apriltag_36h11.js"></script> 
+  <script src="./src/dictionaries/artag.js"></script> 
+  <script src="./src/dictionaries/artoolkitplus.js"></script> 
+  <script src="./src/dictionaries/artoolkitplusbch.js"></script> 
+  <script src="./src/dictionaries/aruco_4x4_1000.js"></script> 
+  <script src="./src/dictionaries/aruco_5x5_1000.js"></script> 
+  <script src="./src/dictionaries/aruco_6x6_1000.js"></script> 
+  <script src="./src/dictionaries/aruco_7x7_1000.js"></script> 
+  <script src="./src/dictionaries/aruco_default_opencv.js"></script> 
+  <script src="./src/dictionaries/aruco_mip_16h3.js"></script> 
+  <script src="./src/dictionaries/aruco_mip_25h7.js"></script> 
+  <script src="./src/dictionaries/chilitags.js"></script>
+
+  <script src="./src/finder.js"></script>
+</body>
+</html>
