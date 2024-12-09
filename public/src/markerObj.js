@@ -1,13 +1,15 @@
 class MarkerObj {
-    constructor(arucoDictionary, arucoId, x, y, scale, onUpdate) {
+    constructor(arucoDictionary, arucoId, x, y, size, onUpdate, onDelete) {
       this.dictionaryName = arucoDictionary;
       this.arucoId = arucoId;
       this.x = x;
       this.y = y;
-      this.scale = scale;
-      this.onUpdate = onUpdate; // callback to notify editor when something changes
+      this.size = size; // Actual pixel size
+      this.onUpdate = onUpdate;
+      this.onDelete = onDelete;
   
       this.svgData = this.generateSVG();
+      this.cachedImage = null;
       this.uiElement = this.createUI();
       this.updateImage();
     }
@@ -20,6 +22,16 @@ class MarkerObj {
     createUI() {
       const container = document.createElement('div');
       container.className = 'marker-panel';
+  
+      const deleteBtn = document.createElement('button');
+      deleteBtn.className = 'delete-button';
+      deleteBtn.textContent = 'X';
+      deleteBtn.addEventListener('click', () => {
+        if (typeof this.onDelete === 'function') {
+          this.onDelete(this);
+        }
+      });
+      container.appendChild(deleteBtn);
   
       const title = document.createElement('h4');
       title.textContent = 'Marker';
@@ -80,15 +92,14 @@ class MarkerObj {
       yRow.appendChild(yInput);
       container.appendChild(yRow);
   
-      // Scale
+      // Size (px)
       const scaleRow = document.createElement('div');
       scaleRow.className = 'marker-row';
       const scaleLabel = document.createElement('label');
-      scaleLabel.textContent = 'Scale:';
+      scaleLabel.textContent = 'Size (px):';
       const scaleInput = document.createElement('input');
       scaleInput.type = 'number';
-      scaleInput.step = '0.1';
-      scaleInput.value = this.scale;
+      scaleInput.value = this.size;
       scaleRow.appendChild(scaleLabel);
       scaleRow.appendChild(scaleInput);
       container.appendChild(scaleRow);
@@ -133,7 +144,7 @@ class MarkerObj {
       scaleInput.addEventListener('change', () => {
         const val = parseFloat(scaleInput.value);
         if (!isNaN(val)) {
-          this.scale = val;
+          this.size = val;
           this.notifyUpdate();
         }
       });
@@ -149,16 +160,16 @@ class MarkerObj {
     }
   
     updateImage() {
-      // Update the preview image from this.svgData
       const svgBlob = new Blob([this.svgData], {type: 'image/svg+xml;charset=utf-8'});
       const url = URL.createObjectURL(svgBlob);
       const img = new Image();
       img.onload = () => {
+        this.cachedImage = img;
         if (this.imgEl) {
           this.imgEl.src = url;
         }
-        // We won't revoke the URL immediately since we want to keep the image visible
-        // In a production scenario, we might store a dataURL or handle it differently.
+        // Once the image is ready, notify update to trigger a redraw
+        this.notifyUpdate();
       };
       img.src = url;
     }
@@ -167,22 +178,38 @@ class MarkerObj {
       try {
         const dic = new AR.Dictionary(this.dictionaryName);
         if (this.arucoId > dic.codeList.length - 1) {
-          // If the ID is out of range, clamp it
           this.arucoId = dic.codeList.length - 1;
           this.idInput.value = this.arucoId;
         }
         this.svgData = dic.generateSVG(this.arucoId);
         this.updateImage();
-        this.notifyUpdate();
+        // do not call notifyUpdate() here, updateImage() will call it after image load
       } catch (e) {
         alert(e);
       }
     }
   
     notifyUpdate() {
+      // Update UI fields to reflect actual marker state
+      this.xInput.value = this.x;
+      this.yInput.value = this.y;
+      this.scaleInput.value = this.size;
+      this.idInput.value = this.arucoId;
+      this.dictSelect.value = this.dictionaryName;
+  
       if (typeof this.onUpdate === 'function') {
         this.onUpdate();
       }
+    }
+  
+    toJSON() {
+      return {
+        dictionaryName: this.dictionaryName,
+        arucoId: this.arucoId,
+        x: this.x,
+        y: this.y,
+        scale: this.size
+      };
     }
   }
   

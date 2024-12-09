@@ -7,6 +7,12 @@ document.addEventListener('DOMContentLoaded', () => {
   const imageUpload = document.getElementById('imageUpload');
   const editorCanvas = document.getElementById('editorCanvas');
   const saveImageBtn = document.getElementById('saveImageBtn');
+  const exportMarkersBtn = document.getElementById('exportMarkersBtn');
+  const exportFileNameInput = document.getElementById('exportFileName');
+  const importMarkersBtn = document.getElementById('importMarkersBtn');
+  const importFileInput = document.getElementById('importFileInput');
+  const clearImageBtn = document.getElementById('clearImageBtn');
+  const imageInfo = document.getElementById('imageInfo');
 
   const ctx = editorCanvas.getContext('2d');
 
@@ -14,6 +20,11 @@ document.addEventListener('DOMContentLoaded', () => {
   let currentDictionaryName = null;
   let currentDictionary = null;
   let markers = []; // Array of MarkerObj instances
+
+  // For dragging
+  let draggedMarker = null;
+  let dragOffsetX = 0;
+  let dragOffsetY = 0;
 
   // Populate dictionary dropdown
   for (const dicName in AR.DICTIONARIES) {
@@ -43,9 +54,33 @@ document.addEventListener('DOMContentLoaded', () => {
     loadImageFromFile(e.target.files[0]);
   });
 
+  clearImageBtn.addEventListener('click', () => {
+    clearImage();
+  });
+
   saveImageBtn.addEventListener('click', () => {
     saveCompositeImage();
   });
+
+  exportMarkersBtn.addEventListener('click', () => {
+    exportMarkers();
+  });
+
+  importMarkersBtn.addEventListener('click', () => {
+    importFileInput.click();
+  });
+
+  importFileInput.addEventListener('change', (e) => {
+    if (e.target.files && e.target.files[0]) {
+      importMarkers(e.target.files[0]);
+    }
+  });
+
+  // Add mouse events for dragging
+  editorCanvas.addEventListener('mousedown', onCanvasMouseDown);
+  editorCanvas.addEventListener('mousemove', onCanvasMouseMove);
+  editorCanvas.addEventListener('mouseup', onCanvasMouseUp);
+  editorCanvas.addEventListener('mouseleave', onCanvasMouseUp);
 
   function updateDictionary(dicName) {
     currentDictionaryName = dicName;
@@ -61,29 +96,37 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  function addMarker() {
-    const markerID = parseInt(markerIdInput.value, 10);
+  function addMarker(dictionaryName = currentDictionaryName, markerID = parseInt(markerIdInput.value, 10), x = 50, y = 50, size = 100) {
     if (isNaN(markerID)) return;
     if (!currentDictionary) return;
 
-    // Create a new MarkerObj instance
     const marker = new MarkerObj(
-      currentDictionaryName, 
+      dictionaryName, 
       markerID, 
-      50,   // default x
-      50,   // default y
-      1.0,  // default scale
+      x,
+      y,
+      size,
       () => {
-        // onUpdate callback: redraw the scene whenever marker changes
         drawScene();
+      },
+      (m) => {
+        removeMarker(m);
       }
     );
     markers.push(marker);
-
-    // Add its UI panel to the markerList
     markerList.appendChild(marker.uiElement);
-
     drawScene();
+  }
+
+  function removeMarker(markerObj) {
+    const index = markers.indexOf(markerObj);
+    if (index !== -1) {
+      markers.splice(index, 1);
+      if (markerObj.uiElement && markerObj.uiElement.parentNode) {
+        markerObj.uiElement.parentNode.removeChild(markerObj.uiElement);
+      }
+      drawScene();
+    }
   }
 
   function loadImageFromFile(file) {
@@ -94,6 +137,7 @@ document.addEventListener('DOMContentLoaded', () => {
         currentImage = img;
         editorCanvas.width = img.width;
         editorCanvas.height = img.height;
+        imageInfo.textContent = `Image Size: ${img.width} x ${img.height}`;
         drawScene();
       };
       img.src = e.target.result;
@@ -101,13 +145,25 @@ document.addEventListener('DOMContentLoaded', () => {
     reader.readAsDataURL(file);
   }
 
+  function clearImage() {
+    currentImage = null;
+    imageInfo.textContent = '';
+    // Reset canvas to a default size if you want, e.g. 800x600:
+    editorCanvas.width = 800;
+    editorCanvas.height = 600;
+    drawScene();
+  }
+
   function drawScene() {
     // Clear canvas
     ctx.clearRect(0, 0, editorCanvas.width, editorCanvas.height);
 
-    // Draw image if loaded
     if (currentImage) {
       ctx.drawImage(currentImage, 0, 0);
+    } else {
+      // white background if no image
+      ctx.fillStyle = 'white';
+      ctx.fillRect(0,0,editorCanvas.width, editorCanvas.height);
     }
 
     // Draw markers
@@ -117,17 +173,10 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function drawMarker(marker) {
-    // Convert SVG data to an Image and draw at marker.x, marker.y with scaling
-    const svgBlob = new Blob([marker.svgData], {type: 'image/svg+xml;charset=utf-8'});
-    const url = URL.createObjectURL(svgBlob);
-
-    const img = new Image();
-    img.onload = () => {
-      const size = 100 * marker.scale; 
-      ctx.drawImage(img, marker.x, marker.y, size, size);
-      URL.revokeObjectURL(url);
-    };
-    img.src = url;
+    // Use cachedImage to avoid flickering
+    if (marker.cachedImage) {
+      ctx.drawImage(marker.cachedImage, marker.x, marker.y, marker.size, marker.size);
+    }
   }
 
   function saveCompositeImage() {
@@ -139,4 +188,88 @@ document.addEventListener('DOMContentLoaded', () => {
     a.click();
     document.body.removeChild(a);
   }
+
+  function exportMarkers() {
+    const filename = exportFileNameInput.value.trim() || 'markers.json';
+    const markerData = markers.map(m => m.toJSON());
+    const jsonStr = JSON.stringify(markerData, null, 2);
+
+    const blob = new Blob([jsonStr], {type:'application/json'});
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  function importMarkers(file) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = JSON.parse(e.target.result);
+        if (Array.isArray(data)) {
+          // Clear existing markers
+          markers.forEach(m => {
+            if (m.uiElement && m.uiElement.parentNode) {
+              m.uiElement.parentNode.removeChild(m.uiElement);
+            }
+          });
+          markers = [];
+
+          // Create markers from JSON
+          data.forEach(d => {
+            if (d.dictionaryName && typeof d.arucoId === 'number' && typeof d.x === 'number' && typeof d.y === 'number' && typeof d.scale === 'number') {
+              addMarker(d.dictionaryName, d.arucoId, d.x, d.y, d.scale);
+            }
+          });
+        }
+      } catch (err) {
+        alert('Invalid JSON file');
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  // Dragging functions
+  function onCanvasMouseDown(e) {
+    const rect = editorCanvas.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+
+    // Check if we clicked on a marker
+    for (let i = markers.length - 1; i >= 0; i--) {
+      const marker = markers[i];
+      if (mouseX >= marker.x && mouseX <= marker.x + marker.size &&
+          mouseY >= marker.y && mouseY <= marker.y + marker.size) {
+        draggedMarker = marker;
+        dragOffsetX = mouseX - marker.x;
+        dragOffsetY = mouseY - marker.y;
+        break;
+      }
+    }
+  }
+
+  function onCanvasMouseMove(e) {
+    if (draggedMarker) {
+      const rect = editorCanvas.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+      draggedMarker.x = mouseX - dragOffsetX;
+      draggedMarker.y = mouseY - dragOffsetY;
+      drawScene();
+    }
+  }
+
+  function onCanvasMouseUp() {
+    if (draggedMarker) {
+      // Update UI after drag
+      draggedMarker.notifyUpdate();
+      draggedMarker = null;
+    }
+  }
+
 });

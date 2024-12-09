@@ -37,7 +37,7 @@
     input[type="file"] {
       margin-bottom: 10px;
     }
-    select, input[type="number"], button {
+    select, input[type="number"], button, input[type="text"] {
       width: 100%;
       margin-bottom: 10px;
     }
@@ -51,6 +51,7 @@
       border: 1px solid #ccc;
       padding: 5px;
       margin-bottom: 10px;
+      position: relative;
     }
     .marker-panel h4 {
       margin-top: 0;
@@ -77,6 +78,25 @@
       max-height: 80px;
       border: 1px solid #ccc;
     }
+    .delete-button {
+      position: absolute;
+      top: 5px;
+      right: 5px;
+      background: #f33;
+      color: #fff;
+      border: none;
+      width: 20px;
+      height: 20px;
+      font-size: 14px;
+      line-height: 20px;
+      text-align: center;
+      cursor: pointer;
+      padding: 0;
+    }
+    #imageInfo {
+      font-size:0.9em;
+      color:#333;
+    }
   </style>
 </head>
 <body>
@@ -87,6 +107,8 @@
       <div class="control-group">
         <label for="imageUpload">Upload Image:</label>
         <input type="file" id="imageUpload" accept="image/*">
+        <div id="imageInfo"></div>
+        <button id="clearImageBtn">Clear Image</button>
       </div>
 
       <div class="control-group">
@@ -112,6 +134,18 @@
       <div class="control-group">
         <button id="saveImageBtn">Save Composite Image</button>
       </div>
+
+      <div class="control-group">
+        <label for="exportFileName">Export Filename:</label>
+        <input type="text" id="exportFileName" value="markers.json">
+        <button id="exportMarkersBtn">Export Markers</button>
+      </div>
+
+      <div class="control-group">
+        <button id="importMarkersBtn">Import Markers</button>
+        <input type="file" id="importFileInput" accept="application/json" style="display:none;">
+      </div>
+
     </div>
 
     <div class="main">
@@ -123,7 +157,7 @@
   <script src="./src/cv.js"></script>
   <script src="./src/aruco.js"></script>
 
-  <!-- Include all dictionaries individually -->
+  <!-- Include all dictionaries -->
   <script src="./src/dictionaries/apriltag_16h5.js"></script> 
   <script src="./src/dictionaries/apriltag_25h7.js"></script> 
   <script src="./src/dictionaries/apriltag_25h9.js"></script> 
