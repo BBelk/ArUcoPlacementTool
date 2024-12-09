@@ -5,36 +5,47 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>ArUco Marker Finder</title>
 <style>
-  body {
-    font-family: sans-serif;
-    margin: 20px;
+  body { margin: 0; font-family: sans-serif; }
+  .container {
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
   }
-
+  .sidebar {
+    width: 300px;
+    border-right: 1px solid #ccc;
+    padding: 10px;
+    box-sizing: border-box;
+    overflow-y: auto;
+  }
+  .main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 20px;
+    box-sizing: border-box;
+    background: #f0f0f0;
+    overflow: auto;
+  }
   .control-group {
     margin-bottom: 15px;
   }
-
   label {
     display: block;
     font-weight: bold;
     margin-bottom: 5px;
   }
-
   select, button {
     width: 100%;
     margin-bottom: 10px;
-  }
-
-  #gridContainer {
-    display: inline-block;
-    position: relative;
-    margin-top: 20px;
   }
 
   .marker-row {
     display: flex;
   }
 
+  /* The grid cells */
   .marker-cell {
     width: 20px;
     height: 20px;
@@ -61,49 +72,67 @@
     font-weight: bold;
   }
 
+  #gridContainer {
+    margin-top: 20px;
+    display: inline-block;
+    position: relative;
+  }
+
+  h1 {
+    margin-top: 0;
+  }
+
 </style>
 </head>
 <body>
-  <h1>ArUco Marker Finder</h1>
 
-  <div class="control-group">
-    <label for="dictionarySelect">Dictionary:</label>
-    <select id="dictionarySelect"></select>
+<div class="container">
+  <div class="sidebar">
+    <h2>ArUco Marker Finder</h2>
+    <button onclick="window.location='index.html'">Switch to Image Placement</button>
+
+    <div class="control-group">
+      <label for="dictionarySelect">Dictionary:</label>
+      <select id="dictionarySelect"></select>
+    </div>
+
+    <div class="control-group">
+      <button id="generateGridBtn">Generate Grid</button>
+    </div>
+
+    <div class="control-group">
+      <button id="checkMarkerBtn">Check Marker</button>
+    </div>
   </div>
 
-  <div class="control-group">
-    <button id="generateGridBtn">Generate Grid</button>
+  <div class="main">
+    <h1>Find a Marker</h1>
+    <div id="gridContainer"></div>
+    <div id="result"></div>
   </div>
+</div>
 
-  <div id="gridContainer"></div>
+<!-- Dependencies -->
+<script src="./src/cv.js"></script>
+<script src="./src/aruco.js"></script>
+<script src="./src/dictionaries/apriltag_16h5.js"></script> 
+<script src="./src/dictionaries/apriltag_25h7.js"></script> 
+<script src="./src/dictionaries/apriltag_25h9.js"></script> 
+<script src="./src/dictionaries/apriltag_36h9.js"></script> 
+<script src="./src/dictionaries/apriltag_36h10.js"></script> 
+<script src="./src/dictionaries/apriltag_36h11.js"></script> 
+<script src="./src/dictionaries/artag.js"></script> 
+<script src="./src/dictionaries/artoolkitplus.js"></script> 
+<script src="./src/dictionaries/artoolkitplusbch.js"></script> 
+<script src="./src/dictionaries/aruco_4x4_1000.js"></script> 
+<script src="./src/dictionaries/aruco_5x5_1000.js"></script> 
+<script src="./src/dictionaries/aruco_6x6_1000.js"></script> 
+<script src="./src/dictionaries/aruco_7x7_1000.js"></script> 
+<script src="./src/dictionaries/aruco_default_opencv.js"></script> 
+<script src="./src/dictionaries/aruco_mip_16h3.js"></script> 
+<script src="./src/dictionaries/aruco_mip_25h7.js"></script> 
+<script src="./src/dictionaries/chilitags.js"></script>
 
-  <div class="control-group">
-    <button id="checkMarkerBtn">Check Marker</button>
-  </div>
-
-  <div id="result"></div>
-
-  <!-- Dependencies -->
-  <script src="./src/cv.js"></script>
-  <script src="./src/aruco.js"></script>
-  <script src="./src/dictionaries/apriltag_16h5.js"></script> 
-  <script src="./src/dictionaries/apriltag_25h7.js"></script> 
-  <script src="./src/dictionaries/apriltag_25h9.js"></script> 
-  <script src="./src/dictionaries/apriltag_36h9.js"></script> 
-  <script src="./src/dictionaries/apriltag_36h10.js"></script> 
-  <script src="./src/dictionaries/apriltag_36h11.js"></script> 
-  <script src="./src/dictionaries/artag.js"></script> 
-  <script src="./src/dictionaries/artoolkitplus.js"></script> 
-  <script src="./src/dictionaries/artoolkitplusbch.js"></script> 
-  <script src="./src/dictionaries/aruco_4x4_1000.js"></script> 
-  <script src="./src/dictionaries/aruco_5x5_1000.js"></script> 
-  <script src="./src/dictionaries/aruco_6x6_1000.js"></script> 
-  <script src="./src/dictionaries/aruco_7x7_1000.js"></script> 
-  <script src="./src/dictionaries/aruco_default_opencv.js"></script> 
-  <script src="./src/dictionaries/aruco_mip_16h3.js"></script> 
-  <script src="./src/dictionaries/aruco_mip_25h7.js"></script> 
-  <script src="./src/dictionaries/chilitags.js"></script>
-
-  <script src="./src/finder.js"></script>
+<script src="./src/finder.js"></script>
 </body>
 </html>
