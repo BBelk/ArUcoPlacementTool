@@ -1,14 +1,14 @@
 document.addEventListener('DOMContentLoaded', () => {
     const dictionarySelect = document.getElementById('dictionarySelect');
-    const generateGridBtn = document.getElementById('generateGridBtn');
+    const generateBlackGridBtn = document.getElementById('generateBlackGridBtn');
+    const generateWhiteGridBtn = document.getElementById('generateWhiteGridBtn');
     const gridContainer = document.getElementById('gridContainer');
-    const checkMarkerBtn = document.getElementById('checkMarkerBtn');
     const resultEl = document.getElementById('result');
   
     let currentDictionaryName = null;
     let currentDictionary = null;
     let markSize = 0;
-    let cells = []; // 2D array of cells (each cell: {el:HTMLElement, isBlack:boolean, isBorder:boolean})
+    let cells = []; // 2D array of cells (each cell: {el: HTMLElement, isBlack: boolean, isBorder: boolean})
   
     // Populate dictionary dropdown
     for (const dicName in AR.DICTIONARIES) {
@@ -19,28 +19,29 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   
     dictionarySelect.value = 'ARUCO_MIP_36h12'; // Default if exists
+    updateDictionary(dictionarySelect.value);
   
     dictionarySelect.addEventListener('change', () => {
-      currentDictionaryName = dictionarySelect.value;
-      currentDictionary = new AR.Dictionary(currentDictionaryName);
+      updateDictionary(dictionarySelect.value);
+    });
+  
+    generateBlackGridBtn.addEventListener('click', () => {
+      generateGrid(true);
+    });
+  
+    generateWhiteGridBtn.addEventListener('click', () => {
+      generateGrid(false);
+    });  
+  
+    function updateDictionary(dicName) {
+      currentDictionaryName = dicName;
+      currentDictionary = new AR.Dictionary(dicName);
       markSize = currentDictionary.markSize;
-    });
+      generateGrid(true);
+    }
   
-    // Initialize selection
-    currentDictionaryName = dictionarySelect.value;
-    currentDictionary = new AR.Dictionary(currentDictionaryName);
-    markSize = currentDictionary.markSize;
-  
-    generateGridBtn.addEventListener('click', () => {
-      generateGrid();
-    });
-  
-    checkMarkerBtn.addEventListener('click', () => {
-      checkMarker();
-    });
-  
-    function generateGrid() {
-      // Clear previous
+    function generateGrid(startWithBlack) {
+      // Clear previous grid
       gridContainer.innerHTML = '';
       cells = [];
   
@@ -48,6 +49,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const rowEl = document.createElement('div');
         rowEl.className = 'marker-row';
         const rowCells = [];
+  
         for (let c = 0; c < markSize; c++) {
           const cellEl = document.createElement('div');
           cellEl.className = 'marker-cell';
@@ -55,19 +57,26 @@ document.addEventListener('DOMContentLoaded', () => {
           const isBorder = (r === 0 || r === markSize - 1 || c === 0 || c === markSize - 1);
           if (isBorder) {
             cellEl.classList.add('border-cell');
-            rowCells.push({el: cellEl, isBlack: true, isBorder: true});
+            rowCells.push({ el: cellEl, isBlack: true, isBorder: true });
           } else {
-            // Start all inside cells as black
-            cellEl.classList.add('black-cell');
+            if (startWithBlack) {
+              cellEl.classList.add('black-cell');
+            } else {
+              cellEl.classList.add('white-cell');
+            }
+  
+            rowCells.push({ el: cellEl, isBlack: startWithBlack, isBorder: false });
+  
+            // Add click event to toggle cell color and check for a match
             cellEl.addEventListener('click', () => {
-              toggleCell(r,c);
-              checkMarker(); // Auto check after toggling
+              toggleCell(r, c);
+              checkMarker();
             });
-            rowCells.push({el: cellEl, isBlack: true, isBorder: false});
           }
   
           rowEl.appendChild(cellEl);
         }
+  
         cells.push(rowCells);
         gridContainer.appendChild(rowEl);
       }
@@ -77,15 +86,10 @@ document.addEventListener('DOMContentLoaded', () => {
   
     function toggleCell(r, c) {
       const cell = cells[r][c];
-      if (cell.isBorder) return; // no toggle for borders
+      if (cell.isBorder) return; // Do not toggle border cells
       cell.isBlack = !cell.isBlack;
-      if (cell.isBlack) {
-        cell.el.classList.remove('white-cell');
-        cell.el.classList.add('black-cell');
-      } else {
-        cell.el.classList.remove('black-cell');
-        cell.el.classList.add('white-cell');
-      }
+      cell.el.classList.toggle('black-cell', cell.isBlack);
+      cell.el.classList.toggle('white-cell', !cell.isBlack);
     }
   
     function checkMarker() {
@@ -93,11 +97,11 @@ document.addEventListener('DOMContentLoaded', () => {
   
       const innerSize = markSize - 2;
       let bits = [];
+  
       for (let i = 0; i < innerSize; i++) {
         bits[i] = [];
         for (let j = 0; j < innerSize; j++) {
-          const cell = cells[i+1][j+1]; // offset by 1 for inner area
-          // If cell.isBlack => 0, else => 1
+          const cell = cells[i + 1][j + 1]; // Offset by 1 for inner area
           bits[i][j] = cell.isBlack ? '0' : '1';
         }
       }
@@ -110,7 +114,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
   
-    // Initially generate a grid just for convenience
-    generateGrid();
+    // Initially generate a black grid for convenience
+    generateGrid(true);
   });
   
