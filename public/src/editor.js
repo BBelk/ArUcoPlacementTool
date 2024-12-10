@@ -8,7 +8,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const editorCanvas = document.getElementById('editorCanvas');
   const saveImageBtn = document.getElementById('saveImageBtn');
   const exportMarkersBtn = document.getElementById('exportMarkersBtn');
-  const exportFileNameInput = document.getElementById('exportFileName');
   const importMarkersBtn = document.getElementById('importMarkersBtn');
   const importFileInput = document.getElementById('importFileInput');
   const clearImageBtn = document.getElementById('clearImageBtn');
@@ -190,16 +189,18 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function exportMarkers() {
-    const filename = exportFileNameInput.value.trim() || 'markers.json';
-    const markerData = markers.map(m => m.toJSON());
-    const jsonStr = JSON.stringify(markerData, null, 2);
-
-    const blob = new Blob([jsonStr], {type:'application/json'});
+    if (markers.length === 0) {
+      alert("No markers to export!");
+      return;
+    }
+  
+    const data = JSON.stringify(markers, null, 2); // Pretty print the JSON
+    const blob = new Blob([data], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
-
+  
     const a = document.createElement('a');
     a.href = url;
-    a.download = filename;
+    a.download = 'markers.json'; // Default file name
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);

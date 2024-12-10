@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "ws --port 3000",
+    "deploy": "gh-pages -d public",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -12,5 +13,8 @@
   "license": "ISC",
   "dependencies": {
     "local-web-server": "^5.4.0"
+  },
+  "devDependencies": {
+    "gh-pages": "^6.2.0"
   }
 }
