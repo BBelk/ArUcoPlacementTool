@@ -4,13 +4,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const generateWhiteGridBtn = document.getElementById('generateWhiteGridBtn');
     const gridContainer = document.getElementById('gridContainer');
     const resultEl = document.getElementById('result');
+    const checkMarkerBtn = document.getElementById('checkMarkerBtn');
+    const rotateLeftBtn = document.getElementById('rotateLeftBtn');
+    const rotateRightBtn = document.getElementById('rotateRightBtn');
   
     let currentDictionaryName = null;
     let currentDictionary = null;
     let markSize = 0;
     let cells = [];
   
-    // Group dictionaries by grid size
     const dictionariesBySize = {
       '4x4': [],
       '5x5': [],
@@ -19,8 +21,8 @@ document.addEventListener('DOMContentLoaded', () => {
       '8x8': []
     };
   
-    // Populate the dropdown with "Any" options first
-    const anySizes = ['4x4', '5x5', '6x6', '7x7', '8x8'];
+    // Add ANY options
+    const anySizes = ['4x4','5x5','6x6','7x7','8x8'];
     anySizes.forEach(size => {
       const opt = document.createElement('option');
       opt.value = 'ANY_' + size;
@@ -28,11 +30,10 @@ document.addEventListener('DOMContentLoaded', () => {
       dictionarySelect.appendChild(opt);
     });
   
-    // Populate actual dictionaries and group them by size
+    // Populate from AR.DICTIONARIES
     for (const dicName in AR.DICTIONARIES) {
       const dic = new AR.Dictionary(dicName);
-      const size = `${dic.markSize - 2}x${dic.markSize - 2}`; // Get inner grid size (subtract border)
-  
+      const size = `${dic.markSize - 2}x${dic.markSize - 2}`;
       const opt = document.createElement('option');
       opt.value = dicName;
       opt.textContent = dicName;
@@ -45,7 +46,6 @@ document.addEventListener('DOMContentLoaded', () => {
   
     console.log('Dictionaries by Size:', dictionariesBySize);
   
-    // Default to "Any 4x4"
     dictionarySelect.value = 'ANY_4x4';
     updateDictionary(dictionarySelect.value);
   
@@ -60,19 +60,39 @@ document.addEventListener('DOMContentLoaded', () => {
     generateWhiteGridBtn.addEventListener('click', () => {
       generateGrid(false);
     });
-  
+
+    checkMarkerBtn.addEventListener('click', () => {
+      checkMarker();
+    });
+
+    rotateLeftBtn.addEventListener('click', () => {
+      rotatePatternLeft();
+      drawScene();
+    });
+
+    rotateRightBtn.addEventListener('click', () => {
+      rotatePatternRight();
+      drawScene();
+    });
+    
     function updateDictionary(dicName) {
       if (dicName.startsWith('ANY_')) {
         const size = dicName.split('_')[1];
-        markSize = parseInt(size.split('x')[0], 10) + 2; // Inner size + 2 for borders
+        markSize = parseInt(size.split('x')[0], 10) + 2;
         currentDictionaryName = dicName;
         currentDictionary = null;
-        console.log(`Selected: ${dicName}, Mark Size: ${markSize}`);
+        // Show "Compiling ANY dictionaries" in the grid area
+        gridContainer.textContent = 'Compiling ANY dictionaries...';
+        // Enable "Check Marker" button and set text
+        checkMarkerBtn.disabled = false;
+        checkMarkerBtn.textContent = 'Check Marker';
       } else {
         currentDictionaryName = dicName;
         currentDictionary = new AR.Dictionary(dicName);
         markSize = currentDictionary.markSize;
-        console.log(`Selected Dictionary: ${dicName}, Mark Size: ${markSize}`);
+        // For single dictionary, show greyed out button
+        checkMarkerBtn.disabled = true;
+        checkMarkerBtn.textContent = 'Single dictionary auto-checks on cell selection';
       }
       generateGrid(true);
     }
@@ -95,16 +115,18 @@ document.addEventListener('DOMContentLoaded', () => {
             cellEl.classList.add('border-cell');
             rowCells.push({ el: cellEl, isBlack: true, isBorder: true });
           } else {
-            if (startWithBlack) {
-              cellEl.classList.add('black-cell');
-            } else {
-              cellEl.classList.add('white-cell');
-            }
+            if (startWithBlack) cellEl.classList.add('black-cell');
+            else cellEl.classList.add('white-cell');
   
-            rowCells.push({ el: cellEl, isBlack: startWithBlack, isBorder: false });
+            const cell = { el: cellEl, isBlack: startWithBlack, isBorder: false };
+            rowCells.push(cell);
+
             cellEl.addEventListener('click', () => {
               toggleCell(r, c);
-              checkMarker();
+              // Auto-check only if not ANY
+              if (!currentDictionaryName.startsWith('ANY_')) {
+                checkMarker();
+              }
             });
           }
   
@@ -127,13 +149,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   
     function checkMarker() {
+      if (!currentDictionaryName) return;
       const innerSize = markSize - 2;
       let bits = [];
   
       for (let i = 0; i < innerSize; i++) {
         bits[i] = [];
         for (let j = 0; j < innerSize; j++) {
-          const cell = cells[i + 1][j + 1];
+          const cell = cells[i+1][j+1];
           bits[i][j] = cell.isBlack ? '0' : '1';
         }
       }
@@ -141,11 +164,13 @@ document.addEventListener('DOMContentLoaded', () => {
       if (currentDictionaryName.startsWith('ANY_')) {
         const size = currentDictionaryName.split('_')[1];
         const dictList = dictionariesBySize[size] || [];
-        console.log(`Checking dictionaries for ${currentDictionaryName}:`, dictList);
-  
         let matches = [];
   
         dictList.forEach(dicName => {
+          if (!AR.DICTIONARIES[dicName]) {
+            console.error(`Dictionary not found in AR.DICTIONARIES: ${dicName}`);
+            return;
+          }
           const dic = new AR.Dictionary(dicName);
           const found = dic.find(bits);
           if (found && found.distance === 0) {
@@ -169,8 +194,55 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       }
     }
-  
+
+    function rotatePatternLeft() {
+      const innerSize = markSize - 2;
+      if (innerSize <= 0) return;
+      let newPattern = [];
+      for (let i = 0; i < innerSize; i++) {
+        newPattern[i] = [];
+        for (let j = 0; j < innerSize; j++) {
+          newPattern[i][j] = cells[j+1][innerSize - 1 - i + 1].isBlack;
+        }
+      }
+      applyPattern(newPattern);
+    }
+
+    function rotatePatternRight() {
+      const innerSize = markSize - 2;
+      if (innerSize <= 0) return;
+      let newPattern = [];
+      for (let i = 0; i < innerSize; i++) {
+        newPattern[i] = [];
+        for (let j = 0; j < innerSize; j++) {
+          newPattern[i][j] = cells[innerSize - 1 - j + 1][i + 1].isBlack;
+        }
+      }
+      applyPattern(newPattern);
+    }
+
+    function applyPattern(pattern) {
+      const innerSize = markSize - 2;
+      for (let i = 0; i < innerSize; i++) {
+        for (let j = 0; j < innerSize; j++) {
+          cells[i+1][j+1].isBlack = pattern[i][j];
+        }
+      }
+    }
+
+    function drawScene() {
+      for (let r = 0; r < markSize; r++) {
+        for (let c = 0; c < markSize; c++) {
+          const cell = cells[r][c];
+          if (!cell.isBorder) {
+            cell.el.classList.toggle('black-cell', cell.isBlack);
+            cell.el.classList.toggle('white-cell', !cell.isBlack);
+          }
+        }
+      }
+      // Do not auto-check, do nothing else here
+    }
+
     // Initially generate a black grid
     generateGrid(true);
-  });
-  
+});

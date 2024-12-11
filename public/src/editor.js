@@ -18,14 +18,12 @@ document.addEventListener('DOMContentLoaded', () => {
   let currentImage = null;
   let currentDictionaryName = null;
   let currentDictionary = null;
-  let markers = []; // Array of MarkerObj instances
+  let markers = [];
 
-  // For dragging
   let draggedMarker = null;
   let dragOffsetX = 0;
   let dragOffsetY = 0;
 
-  // Populate dictionary dropdown
   for (const dicName in AR.DICTIONARIES) {
     const option = document.createElement('option');
     option.value = dicName;
@@ -33,7 +31,6 @@ document.addEventListener('DOMContentLoaded', () => {
     dictionarySelect.appendChild(option);
   }
 
-  // Select a default dictionary
   dictionarySelect.value = 'ARUCO_MIP_36h12';
   updateDictionary(dictionarySelect.value);
 
@@ -75,7 +72,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Add mouse events for dragging
   editorCanvas.addEventListener('mousedown', onCanvasMouseDown);
   editorCanvas.addEventListener('mousemove', onCanvasMouseMove);
   editorCanvas.addEventListener('mouseup', onCanvasMouseUp);
@@ -98,6 +94,10 @@ document.addEventListener('DOMContentLoaded', () => {
   function addMarker(dictionaryName = currentDictionaryName, markerID = parseInt(markerIdInput.value, 10), x = 50, y = 50, size = 100) {
     if (isNaN(markerID)) return;
     if (!currentDictionary) return;
+
+    x = Math.round(x);
+    y = Math.round(y);
+    size = Math.round(size);
 
     const marker = new MarkerObj(
       dictionaryName, 
@@ -133,9 +133,9 @@ document.addEventListener('DOMContentLoaded', () => {
     reader.onload = (e) => {
       const img = new Image();
       img.onload = () => {
+        editorCanvas.width = Math.round(img.width);
+        editorCanvas.height = Math.round(img.height);
         currentImage = img;
-        editorCanvas.width = img.width;
-        editorCanvas.height = img.height;
         imageInfo.textContent = `Image Size: ${img.width} x ${img.height}`;
         drawScene();
       };
@@ -147,34 +147,32 @@ document.addEventListener('DOMContentLoaded', () => {
   function clearImage() {
     currentImage = null;
     imageInfo.textContent = '';
-    // Reset canvas to a default size if you want, e.g. 800x600:
     editorCanvas.width = 800;
     editorCanvas.height = 600;
     drawScene();
   }
 
   function drawScene() {
-    // Clear canvas
+    ctx.imageSmoothingEnabled = false;
     ctx.clearRect(0, 0, editorCanvas.width, editorCanvas.height);
 
     if (currentImage) {
       ctx.drawImage(currentImage, 0, 0);
     } else {
-      // white background if no image
       ctx.fillStyle = 'white';
       ctx.fillRect(0,0,editorCanvas.width, editorCanvas.height);
     }
 
-    // Draw markers
     markers.forEach(marker => {
       drawMarker(marker);
     });
   }
 
   function drawMarker(marker) {
-    // Use cachedImage to avoid flickering
+    const drawX = marker.x|0;
+    const drawY = marker.y|0;
     if (marker.cachedImage) {
-      ctx.drawImage(marker.cachedImage, marker.x, marker.y, marker.size, marker.size);
+      ctx.drawImage(marker.cachedImage, drawX, drawY);
     }
   }
 
@@ -194,13 +192,13 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
   
-    const data = JSON.stringify(markers, null, 2); // Pretty print the JSON
+    const data = JSON.stringify(markers, null, 2);
     const blob = new Blob([data], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
   
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'markers.json'; // Default file name
+    a.download = 'markers.json';
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -213,7 +211,6 @@ document.addEventListener('DOMContentLoaded', () => {
       try {
         const data = JSON.parse(e.target.result);
         if (Array.isArray(data)) {
-          // Clear existing markers
           markers.forEach(m => {
             if (m.uiElement && m.uiElement.parentNode) {
               m.uiElement.parentNode.removeChild(m.uiElement);
@@ -221,10 +218,9 @@ document.addEventListener('DOMContentLoaded', () => {
           });
           markers = [];
 
-          // Create markers from JSON
           data.forEach(d => {
             if (d.dictionaryName && typeof d.arucoId === 'number' && typeof d.x === 'number' && typeof d.y === 'number' && typeof d.scale === 'number') {
-              addMarker(d.dictionaryName, d.arucoId, d.x, d.y, d.scale);
+              addMarker(d.dictionaryName, d.arucoId, Math.round(d.x), Math.round(d.y), Math.round(d.scale));
             }
           });
         }
@@ -235,20 +231,22 @@ document.addEventListener('DOMContentLoaded', () => {
     reader.readAsText(file);
   }
 
-  // Dragging functions
   function onCanvasMouseDown(e) {
     const rect = editorCanvas.getBoundingClientRect();
     const mouseX = e.clientX - rect.left;
     const mouseY = e.clientY - rect.top;
 
-    // Check if we clicked on a marker
     for (let i = markers.length - 1; i >= 0; i--) {
       const marker = markers[i];
-      if (mouseX >= marker.x && mouseX <= marker.x + marker.size &&
-          mouseY >= marker.y && mouseY <= marker.y + marker.size) {
+      const mx = marker.x|0;
+      const my = marker.y|0;
+      const ms = marker.size|0;
+
+      if (mouseX >= mx && mouseX <= mx + ms &&
+          mouseY >= my && mouseY <= my + ms) {
         draggedMarker = marker;
-        dragOffsetX = mouseX - marker.x;
-        dragOffsetY = mouseY - marker.y;
+        dragOffsetX = mouseX - mx;
+        dragOffsetY = mouseY - my;
         break;
       }
     }
@@ -259,15 +257,17 @@ document.addEventListener('DOMContentLoaded', () => {
       const rect = editorCanvas.getBoundingClientRect();
       const mouseX = e.clientX - rect.left;
       const mouseY = e.clientY - rect.top;
-      draggedMarker.x = mouseX - dragOffsetX;
-      draggedMarker.y = mouseY - dragOffsetY;
+
+      draggedMarker.x = Math.round(mouseX - dragOffsetX);
+      draggedMarker.y = Math.round(mouseY - dragOffsetY);
       drawScene();
     }
   }
 
   function onCanvasMouseUp() {
     if (draggedMarker) {
-      // Update UI after drag
+      draggedMarker.x = Math.round(draggedMarker.x);
+      draggedMarker.y = Math.round(draggedMarker.y);
       draggedMarker.notifyUpdate();
       draggedMarker = null;
     }
