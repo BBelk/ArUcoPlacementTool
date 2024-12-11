@@ -180,9 +180,7 @@ class MarkerObj {
         const code = dic.codeList[this.arucoId];
 
         // Pixel-based drawing:
-        const cellSize = this.size / markSize; // now guaranteed integral
-        // cellSize is integral because size is multiple of markSize
-        // Draw marker directly
+        const cellSize = this.size / markSize;
         const offCanvas = document.createElement('canvas');
         offCanvas.width = this.size|0;
         offCanvas.height = this.size|0;

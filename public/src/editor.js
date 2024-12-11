@@ -13,6 +13,15 @@ document.addEventListener('DOMContentLoaded', () => {
   const clearImageBtn = document.getElementById('clearImageBtn');
   const imageInfo = document.getElementById('imageInfo');
 
+  const scaleInput = document.getElementById('scaleInput');
+  const widthInput = document.getElementById('widthInput');
+  const heightInput = document.getElementById('heightInput');
+  const bgColorPicker = document.getElementById('bgColorPicker');
+
+  const canvasWidthInput = document.getElementById('canvasWidthInput');
+  const canvasHeightInput = document.getElementById('canvasHeightInput');
+  const updateCanvasSizeBtn = document.getElementById('updateCanvasSizeBtn');
+
   const ctx = editorCanvas.getContext('2d');
 
   let currentImage = null;
@@ -24,6 +33,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let dragOffsetX = 0;
   let dragOffsetY = 0;
 
+  // Populate dictionary options
   for (const dicName in AR.DICTIONARIES) {
     const option = document.createElement('option');
     option.value = dicName;
@@ -76,6 +86,13 @@ document.addEventListener('DOMContentLoaded', () => {
   editorCanvas.addEventListener('mousemove', onCanvasMouseMove);
   editorCanvas.addEventListener('mouseup', onCanvasMouseUp);
   editorCanvas.addEventListener('mouseleave', onCanvasMouseUp);
+
+  scaleInput.addEventListener('input', resizeImage);
+  widthInput.addEventListener('input', resizeImage);
+  heightInput.addEventListener('input', resizeImage);
+  bgColorPicker.addEventListener('input', drawScene);
+
+  updateCanvasSizeBtn.addEventListener('click', updateCanvasSize);
 
   function updateDictionary(dicName) {
     currentDictionaryName = dicName;
@@ -133,8 +150,6 @@ document.addEventListener('DOMContentLoaded', () => {
     reader.onload = (e) => {
       const img = new Image();
       img.onload = () => {
-        editorCanvas.width = Math.round(img.width);
-        editorCanvas.height = Math.round(img.height);
         currentImage = img;
         imageInfo.textContent = `Image Size: ${img.width} x ${img.height}`;
         drawScene();
@@ -147,20 +162,33 @@ document.addEventListener('DOMContentLoaded', () => {
   function clearImage() {
     currentImage = null;
     imageInfo.textContent = '';
-    editorCanvas.width = 800;
-    editorCanvas.height = 600;
     drawScene();
+  }
+
+  function updateCanvasSize() {
+    const newWidth = parseInt(canvasWidthInput.value, 10);
+    const newHeight = parseInt(canvasHeightInput.value, 10);
+
+    if (!isNaN(newWidth) && !isNaN(newHeight)) {
+      editorCanvas.width = newWidth;
+      editorCanvas.height = newHeight;
+      drawScene();
+    }
   }
 
   function drawScene() {
     ctx.imageSmoothingEnabled = false;
     ctx.clearRect(0, 0, editorCanvas.width, editorCanvas.height);
 
+    // Set the background color
+    ctx.fillStyle = bgColorPicker.value;
+    ctx.fillRect(0, 0, editorCanvas.width, editorCanvas.height);
+
     if (currentImage) {
-      ctx.drawImage(currentImage, 0, 0);
-    } else {
-      ctx.fillStyle = 'white';
-      ctx.fillRect(0,0,editorCanvas.width, editorCanvas.height);
+      // Center the image
+      const imageX = (editorCanvas.width - currentImage.width) / 2;
+      const imageY = (editorCanvas.height - currentImage.height) / 2;
+      ctx.drawImage(currentImage, imageX, imageY);
     }
 
     markers.forEach(marker => {
@@ -169,31 +197,53 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function drawMarker(marker) {
-    const drawX = marker.x|0;
-    const drawY = marker.y|0;
     if (marker.cachedImage) {
+      const drawX = Math.round(marker.x);
+      const drawY = Math.round(marker.y);
       ctx.drawImage(marker.cachedImage, drawX, drawY);
     }
   }
 
   function saveCompositeImage() {
-    const dataURL = editorCanvas.toDataURL('image/png');
+    const formatSelect = document.getElementById('formatSelect');
+  
+    // Get the selected format and filename
+    const format = formatSelect.value;
+    let filename = 'composite';
+  
+    const extension = format === 'jpg' ? 'jpg' : format;
+    if (!filename.endsWith(`.${extension}`)) {
+      filename += `.${extension}`;
+    }
+  
+    const mimeType = format === 'jpg' ? 'image/jpeg' : `image/${format}`;
+    const dataURL = editorCanvas.toDataURL(mimeType, format === 'jpg' ? 0.92 : 1.0);
+  
+    // Create a download link and trigger the download
     const a = document.createElement('a');
     a.href = dataURL;
-    a.download = 'composite.png';
+    a.download = filename;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
   }
 
   function exportMarkers() {
-    if (markers.length === 0) {
-      alert("No markers to export!");
-      return;
-    }
-  
-    const data = JSON.stringify(markers, null, 2);
-    const blob = new Blob([data], { type: 'application/json' });
+    // Include canvas size in the exported data
+    const data = {
+      canvasWidth: editorCanvas.width,
+      canvasHeight: editorCanvas.height,
+      markers: markers.map(m => ({
+        dictionaryName: m.dictionaryName,
+        arucoId: m.arucoId,
+        x: m.x,
+        y: m.y,
+        scale: m.size
+      }))
+    };
+
+    const json = JSON.stringify(data, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
   
     const a = document.createElement('a');
@@ -210,20 +260,32 @@ document.addEventListener('DOMContentLoaded', () => {
     reader.onload = (e) => {
       try {
         const data = JSON.parse(e.target.result);
-        if (Array.isArray(data)) {
-          markers.forEach(m => {
-            if (m.uiElement && m.uiElement.parentNode) {
-              m.uiElement.parentNode.removeChild(m.uiElement);
-            }
-          });
-          markers = [];
 
-          data.forEach(d => {
+        // Clear existing markers
+        markers.forEach(m => {
+          if (m.uiElement && m.uiElement.parentNode) {
+            m.uiElement.parentNode.removeChild(m.uiElement);
+          }
+        });
+        markers = [];
+
+        // If canvas size info is present, update canvas size
+        if (typeof data.canvasWidth === 'number' && typeof data.canvasHeight === 'number') {
+          editorCanvas.width = data.canvasWidth;
+          editorCanvas.height = data.canvasHeight;
+          canvasWidthInput.value = data.canvasWidth;
+          canvasHeightInput.value = data.canvasHeight;
+        }
+
+        if (Array.isArray(data.markers)) {
+          data.markers.forEach(d => {
             if (d.dictionaryName && typeof d.arucoId === 'number' && typeof d.x === 'number' && typeof d.y === 'number' && typeof d.scale === 'number') {
               addMarker(d.dictionaryName, d.arucoId, Math.round(d.x), Math.round(d.y), Math.round(d.scale));
             }
           });
         }
+
+        drawScene();
       } catch (err) {
         alert('Invalid JSON file');
       }
@@ -238,9 +300,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     for (let i = markers.length - 1; i >= 0; i--) {
       const marker = markers[i];
-      const mx = marker.x|0;
-      const my = marker.y|0;
-      const ms = marker.size|0;
+      const mx = Math.round(marker.x);
+      const my = Math.round(marker.y);
+      const ms = Math.round(marker.size);
 
       if (mouseX >= mx && mouseX <= mx + ms &&
           mouseY >= my && mouseY <= my + ms) {
@@ -271,6 +333,48 @@ document.addEventListener('DOMContentLoaded', () => {
       draggedMarker.notifyUpdate();
       draggedMarker = null;
     }
+  }
+
+  function resizeImage() {
+    if (!currentImage) return;
+
+    const scale = parseFloat(scaleInput.value) / 100;
+    const newWidth = parseInt(widthInput.value, 10);
+    const newHeight = parseInt(heightInput.value, 10);
+
+    let finalWidth = currentImage.width;
+    let finalHeight = currentImage.height;
+
+    if (!isNaN(newWidth) && !isNaN(newHeight)) {
+      finalWidth = newWidth;
+      finalHeight = newHeight;
+    } else if (!isNaN(newWidth)) {
+      finalWidth = newWidth;
+      finalHeight = Math.round((currentImage.height / currentImage.width) * newWidth);
+    } else if (!isNaN(newHeight)) {
+      finalHeight = newHeight;
+      finalWidth = Math.round((currentImage.width / currentImage.height) * newHeight);
+    } else {
+      finalWidth = Math.round(currentImage.width * scale);
+      finalHeight = Math.round(currentImage.height * scale);
+    }
+
+    // Create a temporary canvas to resize the image
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = finalWidth;
+    tempCanvas.height = finalHeight;
+    const tempCtx = tempCanvas.getContext('2d');
+    tempCtx.imageSmoothingEnabled = false;
+    tempCtx.drawImage(currentImage, 0, 0, finalWidth, finalHeight);
+
+    const resizedImage = new Image();
+    resizedImage.onload = () => {
+      currentImage = resizedImage;
+      drawScene();
+    };
+    resizedImage.src = tempCanvas.toDataURL();
+
+    imageInfo.textContent = `Image Size: ${finalWidth} x ${finalHeight}`;
   }
 
 });

@@ -100,17 +100,48 @@
   </style>
 </head>
 <body>
-
-
   <div class="container">
     <div class="sidebar">
       <h2>ArUco Placement Tool</h2>
-    <button onclick="window.location='finder.html'">Switch to Finder</button>
+      <button onclick="window.location='finder.html'">Switch to Finder</button>
+
       <div class="control-group">
         <label for="imageUpload">Upload Image:</label>
         <input type="file" id="imageUpload" accept="image/*">
         <div id="imageInfo"></div>
+
+        <div class="control-group">
+          <h3>Image Controls</h3>
+          <label for="scaleInput">Scale (%):</label>
+          <input type="number" id="scaleInput" min="1" value="100">
+        
+          <div style="display: flex; gap: 10px;">
+            <div style="flex: 1;">
+              <label for="widthInput">New Width (px):</label>
+              <input type="number" id="widthInput" min="1" placeholder="Optional">
+            </div>
+            <div style="flex: 1;">
+              <label for="heightInput">New Height (px):</label>
+              <input type="number" id="heightInput" min="1" placeholder="Optional">
+            </div>
+          </div>
+        </div>
+        
+        <div class="control-group">
+          <label for="bgColorPicker">Background Color:</label>
+          <input type="color" id="bgColorPicker" value="#ffffff">
+        </div>
+
         <button id="clearImageBtn">Clear Image</button>
+      </div>
+
+      <div class="control-group">
+        <h3>Canvas Size</h3>
+        <label for="canvasWidthInput">Canvas Width (px):</label>
+        <input type="number" id="canvasWidthInput" min="1" value="800">
+        <label for="canvasHeightInput">Canvas Height (px):</label>
+        <input type="number" id="canvasHeightInput" min="1" value="600">
+        <button id="updateCanvasSizeBtn">Update Canvas Size</button>
       </div>
 
       <div class="control-group">
@@ -133,18 +164,24 @@
         <div id="markerList"></div>
       </div>
 
-      <div class="control-group">
-        <button id="saveImageBtn">Save Composite Image</button>        
+      <div class="control-group">      
+        <label for="formatSelect">Format:</label>
+        <select id="formatSelect">
+          <option value="png">PNG</option>
+          <option value="jpg">JPG</option>
+          <option value="webp">WebP</option>
+        </select>
+      
+        <button id="saveImageBtn">Save Composite Image</button>
         <button id="exportMarkersBtn">Export Markers</button>
         <button id="importMarkersBtn">Import Markers</button>
         <input type="file" id="importFileInput" accept="application/json" style="display:none;">
       </div>
       
-
     </div>
 
     <div class="main">
-      <canvas id="editorCanvas"></canvas>
+      <canvas id="editorCanvas" width="800" height="600"></canvas>
     </div>
   </div>
 
