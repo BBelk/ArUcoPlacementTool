@@ -156,19 +156,26 @@ AR.Dictionary.prototype.generateSVG = function (id) {
   var code = this.codeList[id];
   if (code == null)
     throw 'The id "' + id + '" is not valid for the dictionary "' + this.dicName + '". ID must be between 0 and ' + (this.codeList.length-1) + ' included.';
+
   var size = this.markSize - 2;
-  var svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 '+ (size+4) + ' ' + (size+4) + '">';
-  svg += '<rect x="0" y="0" width="' + (size+4) + '" height="' + (size+4) + '" fill="white"/>';
-  svg += '<rect x="1" y="1" width="' + (size+2) + '" height="' + (size+2) + '" fill="black"/>';
-  for(var y=0;y<size;y++) {
-    for(var x=0;x<size;x++) {
-      if (code[y*size+x]=='1') 
-        svg += '<rect x="' + (x+2) + '" y="' + (y+2) + '" width="1" height="1" fill="white"/>';
+  var svgSize = size + 4;
+  var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + svgSize + '" height="' + svgSize + '" viewBox="0 0 ' + svgSize + ' ' + svgSize + '" shape-rendering="crispEdges">';
+  svg += '<rect x="0" y="0" width="' + svgSize + '" height="' + svgSize + '" fill="white"/>';
+  svg += '<rect x="1" y="1" width="' + (size + 2) + '" height="' + (size + 2) + '" fill="black"/>';
+
+  for (var y = 0; y < size; y++) {
+    for (var x = 0; x < size; x++) {
+      if (code[y * size + x] === '1') {
+        svg += '<rect x="' + ((x|0) + 2) + '" y="' + ((y|0) + 2) + '" width="1" height="1" fill="white"/>';
+      }
     }
   }
+
   svg += '</svg>';
   return svg;
 };
+
+
 
 AR.Marker = function (id, corners, hammingDistance) {
   this.id = id;

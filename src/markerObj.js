@@ -1,28 +1,23 @@
 class MarkerObj {
     constructor(arucoDictionary, arucoId, x, y, size, onUpdate, onDelete) {
       this.dictionaryName = arucoDictionary;
-      this.arucoId = arucoId;
-      this.x = x;
-      this.y = y;
-      this.size = size; // Actual pixel size
+      this.arucoId = arucoId|0;
+      this.x = x|0;
+      this.y = y|0;
+      this.size = size|0;
       this.onUpdate = onUpdate;
       this.onDelete = onDelete;
-  
-      this.svgData = this.generateSVG();
+
       this.cachedImage = null;
       this.uiElement = this.createUI();
-      this.updateImage();
+      this.currentMarkSize = null;
+      this.regenerateMarker();
     }
-  
-    generateSVG() {
-      const dic = new AR.Dictionary(this.dictionaryName);
-      return dic.generateSVG(this.arucoId);
-    }
-  
+
     createUI() {
       const container = document.createElement('div');
       container.className = 'marker-panel';
-  
+
       const deleteBtn = document.createElement('button');
       deleteBtn.className = 'delete-button';
       deleteBtn.textContent = 'X';
@@ -32,12 +27,11 @@ class MarkerObj {
         }
       });
       container.appendChild(deleteBtn);
-  
+
       const title = document.createElement('h4');
       title.textContent = 'Marker';
       container.appendChild(title);
-  
-      // Dictionary select
+
       const dictionaryRow = document.createElement('div');
       dictionaryRow.className = 'marker-row';
       const dictLabel = document.createElement('label');
@@ -55,8 +49,7 @@ class MarkerObj {
       dictionaryRow.appendChild(dictLabel);
       dictionaryRow.appendChild(dictSelect);
       container.appendChild(dictionaryRow);
-  
-      // ID input
+
       const idRow = document.createElement('div');
       idRow.className = 'marker-row';
       const idLabel = document.createElement('label');
@@ -67,8 +60,7 @@ class MarkerObj {
       idRow.appendChild(idLabel);
       idRow.appendChild(idInput);
       container.appendChild(idRow);
-  
-      // Position X
+
       const xRow = document.createElement('div');
       xRow.className = 'marker-row';
       const xLabel = document.createElement('label');
@@ -79,8 +71,7 @@ class MarkerObj {
       xRow.appendChild(xLabel);
       xRow.appendChild(xInput);
       container.appendChild(xRow);
-  
-      // Position Y
+
       const yRow = document.createElement('div');
       yRow.className = 'marker-row';
       const yLabel = document.createElement('label');
@@ -91,8 +82,7 @@ class MarkerObj {
       yRow.appendChild(yLabel);
       yRow.appendChild(yInput);
       container.appendChild(yRow);
-  
-      // Size (px)
+
       const scaleRow = document.createElement('div');
       scaleRow.className = 'marker-row';
       const scaleLabel = document.createElement('label');
@@ -103,77 +93,72 @@ class MarkerObj {
       scaleRow.appendChild(scaleLabel);
       scaleRow.appendChild(scaleInput);
       container.appendChild(scaleRow);
-  
-      // Marker image preview
+
       const imgContainer = document.createElement('div');
       imgContainer.className = 'marker-image';
       const imgEl = document.createElement('img');
       imgContainer.appendChild(imgEl);
       container.appendChild(imgContainer);
-  
-      // Event listeners
+
       dictSelect.addEventListener('change', () => {
         this.dictionaryName = dictSelect.value;
         this.regenerateMarker();
       });
-  
+
       idInput.addEventListener('change', () => {
         const val = parseInt(idInput.value, 10);
         if (!isNaN(val)) {
-          this.arucoId = val;
+          this.arucoId = val|0;
           this.regenerateMarker();
         }
       });
-  
+
       xInput.addEventListener('change', () => {
-        const val = parseFloat(xInput.value);
+        const val = parseInt(xInput.value, 10);
         if (!isNaN(val)) {
-          this.x = val;
+          this.x = val|0;
           this.notifyUpdate();
         }
       });
-  
+
       yInput.addEventListener('change', () => {
-        const val = parseFloat(yInput.value);
+        const val = parseInt(yInput.value, 10);
         if (!isNaN(val)) {
-          this.y = val;
+          this.y = val|0;
           this.notifyUpdate();
         }
       });
-  
-      scaleInput.addEventListener('change', () => {
-        const val = parseFloat(scaleInput.value);
-        if (!isNaN(val)) {
-          this.size = val;
-          this.notifyUpdate();
+
+      scaleInput.addEventListener('input', () => {
+        if (this.currentMarkSize) {
+          const val = parseInt(scaleInput.value, 10);
+          if (!isNaN(val)) {
+            const snapped = this.snapToMultiple(val, this.currentMarkSize);
+            if (snapped !== val) {
+              scaleInput.value = snapped;
+            }
+            this.size = snapped;
+            this.regenerateMarker();
+          }
         }
       });
-  
+
       this.imgEl = imgEl;
       this.dictSelect = dictSelect;
       this.idInput = idInput;
       this.xInput = xInput;
       this.yInput = yInput;
       this.scaleInput = scaleInput;
-  
+
       return container;
     }
-  
-    updateImage() {
-      const svgBlob = new Blob([this.svgData], {type: 'image/svg+xml;charset=utf-8'});
-      const url = URL.createObjectURL(svgBlob);
-      const img = new Image();
-      img.onload = () => {
-        this.cachedImage = img;
-        if (this.imgEl) {
-          this.imgEl.src = url;
-        }
-        // Once the image is ready, notify update to trigger a redraw
-        this.notifyUpdate();
-      };
-      img.src = url;
+
+    snapToMultiple(value, multipleOf) {
+      const ratio = value / multipleOf;
+      const nearest = Math.round(ratio)*multipleOf;
+      return nearest < 1 ? multipleOf : nearest; // ensure at least one cell
     }
-  
+
     regenerateMarker() {
       try {
         const dic = new AR.Dictionary(this.dictionaryName);
@@ -181,35 +166,93 @@ class MarkerObj {
           this.arucoId = dic.codeList.length - 1;
           this.idInput.value = this.arucoId;
         }
-        this.svgData = dic.generateSVG(this.arucoId);
-        this.updateImage();
-        // do not call notifyUpdate() here, updateImage() will call it after image load
+
+        const markSize = dic.markSize;
+        this.currentMarkSize = markSize;
+        this.scaleInput.step = markSize;
+
+        const snapped = this.snapToMultiple(this.size, markSize);
+        if (snapped !== this.size) {
+          this.size = snapped;
+          this.scaleInput.value = this.size;
+        }
+
+        const code = dic.codeList[this.arucoId];
+
+        // Pixel-based drawing:
+        const cellSize = this.size / markSize; // now guaranteed integral
+        // cellSize is integral because size is multiple of markSize
+        // Draw marker directly
+        const offCanvas = document.createElement('canvas');
+        offCanvas.width = this.size|0;
+        offCanvas.height = this.size|0;
+        const offCtx = offCanvas.getContext('2d');
+        offCtx.imageSmoothingEnabled = false;
+        offCtx.fillStyle = 'white';
+        offCtx.fillRect(0,0,offCanvas.width,offCanvas.height);
+
+        // borders black
+        offCtx.fillStyle = 'black';
+        // top border
+        offCtx.fillRect(0,0,this.size, cellSize);
+        // bottom border
+        offCtx.fillRect(0,(markSize-1)*cellSize,this.size, cellSize);
+        // left border
+        offCtx.fillRect(0,0,cellSize,this.size);
+        // right border
+        offCtx.fillRect((markSize-1)*cellSize,0,cellSize,this.size);
+
+        const innerSize = markSize - 2;
+        for (let iy = 0; iy < innerSize; iy++) {
+          for (let ix = 0; ix < innerSize; ix++) {
+            const bit = code[iy*innerSize + ix];
+            if (bit === '0') {
+              offCtx.fillStyle = 'black';
+              offCtx.fillRect((ix+1)*cellSize,(iy+1)*cellSize,cellSize,cellSize);
+            }
+          }
+        }
+
+        const dataURL = offCanvas.toDataURL('image/png');
+        const img = new Image();
+        img.onload = () => {
+          this.cachedImage = img;
+          if (this.imgEl) {
+            this.imgEl.src = dataURL;
+          }
+          this.notifyUpdate();
+        };
+        img.src = dataURL;
+
       } catch (e) {
         alert(e);
       }
     }
-  
+
     notifyUpdate() {
-      // Update UI fields to reflect actual marker state
+      this.x = this.x|0;
+      this.y = this.y|0;
+      this.size = this.size|0;
+      this.arucoId = this.arucoId|0;
+
       this.xInput.value = this.x;
       this.yInput.value = this.y;
       this.scaleInput.value = this.size;
       this.idInput.value = this.arucoId;
       this.dictSelect.value = this.dictionaryName;
-  
+
       if (typeof this.onUpdate === 'function') {
         this.onUpdate();
       }
     }
-  
+
     toJSON() {
       return {
         dictionaryName: this.dictionaryName,
-        arucoId: this.arucoId,
-        x: this.x,
-        y: this.y,
-        scale: this.size
+        arucoId: this.arucoId|0,
+        x: this.x|0,
+        y: this.y|0,
+        scale: this.size|0
       };
     }
   }
-  
