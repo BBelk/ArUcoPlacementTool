@@ -28,6 +28,9 @@
     }
     .control-group {
       margin-bottom: 15px;
+      border: 1px solid #ccc;
+      padding: 10px;
+      border-radius: 4px;
     }
     label {
       display: block;
@@ -52,6 +55,7 @@
       padding: 5px;
       margin-bottom: 10px;
       position: relative;
+      border-radius: 4px;
     }
     .marker-panel h4 {
       margin-top: 0;
@@ -109,39 +113,44 @@
         <label for="imageUpload">Upload Image:</label>
         <input type="file" id="imageUpload" accept="image/*">
         <div id="imageInfo"></div>
-
-        <div class="control-group">
-          <h3>Image Controls</h3>
-          <label for="scaleInput">Scale (%):</label>
-          <input type="number" id="scaleInput" min="1" value="100">
-        
-          <div style="display: flex; gap: 10px;">
-            <div style="flex: 1;">
-              <label for="widthInput">New Width (px):</label>
-              <input type="number" id="widthInput" min="1" placeholder="Optional">
-            </div>
-            <div style="flex: 1;">
-              <label for="heightInput">New Height (px):</label>
-              <input type="number" id="heightInput" min="1" placeholder="Optional">
-            </div>
-          </div>
-        </div>
-        
-        <div class="control-group">
-          <label for="bgColorPicker">Background Color:</label>
-          <input type="color" id="bgColorPicker" value="#ffffff">
-        </div>
-
         <button id="clearImageBtn">Clear Image</button>
       </div>
 
       <div class="control-group">
-        <h3>Canvas Size</h3>
-        <label for="canvasWidthInput">Canvas Width (px):</label>
-        <input type="number" id="canvasWidthInput" min="1" value="800">
-        <label for="canvasHeightInput">Canvas Height (px):</label>
-        <input type="number" id="canvasHeightInput" min="1" value="600">
-        <button id="updateCanvasSizeBtn">Update Canvas Size</button>
+        <h3>Image Controls</h3>
+        <label for="scaleInput">Scale (%):</label>
+        <input type="number" id="scaleInput" min="1" value="100">
+      
+        <div style="display: flex; gap: 10px;">
+          <div style="flex: 1;">
+            <label for="widthInput">Width (px):</label>
+            <input type="number" id="widthInput" min="1" placeholder="Optional">
+          </div>
+          <div style="flex: 1;">
+            <label for="heightInput">Height (px):</label>
+            <input type="number" id="heightInput" min="1" placeholder="Optional">
+          </div>
+        </div>
+      </div>
+
+      <div class="control-group">
+        <h3>Canvas Settings</h3>
+        
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <label for="bgColorPicker" style="margin: 0;">Color:</label>
+          <input type="color" id="bgColorPicker" value="#ffffff">
+        </div>
+      
+        <div style="display: flex; gap: 10px; margin-top: 10px;">
+          <div style="flex: 1;">
+            <label for="canvasWidthInput">Canvas Width (px):</label>
+            <input type="number" id="canvasWidthInput" min="1" value="800">
+          </div>
+          <div style="flex: 1;">
+            <label for="canvasHeightInput">Canvas Height (px):</label>
+            <input type="number" id="canvasHeightInput" min="1" value="600">
+          </div>
+        </div>
       </div>
 
       <div class="control-group">
@@ -177,7 +186,6 @@
         <button id="importMarkersBtn">Import Markers</button>
         <input type="file" id="importFileInput" accept="application/json" style="display:none;">
       </div>
-      
     </div>
 
     <div class="main">

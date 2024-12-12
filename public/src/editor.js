@@ -20,14 +20,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const canvasWidthInput = document.getElementById('canvasWidthInput');
   const canvasHeightInput = document.getElementById('canvasHeightInput');
-  const updateCanvasSizeBtn = document.getElementById('updateCanvasSizeBtn');
 
   const ctx = editorCanvas.getContext('2d');
 
-  let currentImage = null;
   let currentDictionaryName = null;
   let currentDictionary = null;
   let markers = [];
+
+  let originalImage = null; // Unaltered original image
+  let currentImage = null;  // Displayed (scaled) image
 
   let draggedMarker = null;
   let dragOffsetX = 0;
@@ -48,34 +49,13 @@ document.addEventListener('DOMContentLoaded', () => {
     updateDictionary(dictionarySelect.value);
   });
 
-  markerIdInput.addEventListener('change', () => {
-    updateMarkerIDInfo();
-  });
-
-  addMarkerBtn.addEventListener('click', () => {
-    addMarker();
-  });
-
-  imageUpload.addEventListener('change', (e) => {
-    loadImageFromFile(e.target.files[0]);
-  });
-
-  clearImageBtn.addEventListener('click', () => {
-    clearImage();
-  });
-
-  saveImageBtn.addEventListener('click', () => {
-    saveCompositeImage();
-  });
-
-  exportMarkersBtn.addEventListener('click', () => {
-    exportMarkers();
-  });
-
-  importMarkersBtn.addEventListener('click', () => {
-    importFileInput.click();
-  });
-
+  markerIdInput.addEventListener('change', updateMarkerIDInfo);
+  addMarkerBtn.addEventListener('click', () => { addMarker(); });
+  imageUpload.addEventListener('change', (e) => loadImageFromFile(e.target.files[0]));
+  clearImageBtn.addEventListener('click', clearImage);
+  saveImageBtn.addEventListener('click', saveCompositeImage);
+  exportMarkersBtn.addEventListener('click', exportMarkers);
+  importMarkersBtn.addEventListener('click', () => importFileInput.click());
   importFileInput.addEventListener('change', (e) => {
     if (e.target.files && e.target.files[0]) {
       importMarkers(e.target.files[0]);
@@ -87,12 +67,19 @@ document.addEventListener('DOMContentLoaded', () => {
   editorCanvas.addEventListener('mouseup', onCanvasMouseUp);
   editorCanvas.addEventListener('mouseleave', onCanvasMouseUp);
 
-  scaleInput.addEventListener('input', resizeImage);
-  widthInput.addEventListener('input', resizeImage);
-  heightInput.addEventListener('input', resizeImage);
   bgColorPicker.addEventListener('input', drawScene);
 
-  updateCanvasSizeBtn.addEventListener('click', updateCanvasSize);
+  // Apply image resizing when user finishes editing (blur or Enter)
+  [scaleInput, widthInput, heightInput].forEach(el => {
+    el.addEventListener('blur', applyImageResize);
+    el.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') applyImageResize(); });
+  });
+
+  // Apply canvas resizing when user finishes editing (blur or Enter)
+  [canvasWidthInput, canvasHeightInput].forEach(el => {
+    el.addEventListener('blur', applyCanvasResize);
+    el.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') applyCanvasResize(); });
+  });
 
   function updateDictionary(dicName) {
     currentDictionaryName = dicName;
@@ -112,13 +99,14 @@ document.addEventListener('DOMContentLoaded', () => {
     if (isNaN(markerID)) return;
     if (!currentDictionary) return;
 
+    // Markers now stored in canvas coordinates directly
     x = Math.round(x);
     y = Math.round(y);
     size = Math.round(size);
 
     const marker = new MarkerObj(
-      dictionaryName, 
-      markerID, 
+      dictionaryName,
+      markerID,
       x,
       y,
       size,
@@ -150,8 +138,14 @@ document.addEventListener('DOMContentLoaded', () => {
     reader.onload = (e) => {
       const img = new Image();
       img.onload = () => {
+        originalImage = img;
         currentImage = img;
-        imageInfo.textContent = `Image Size: ${img.width} x ${img.height}`;
+        // Prefill the values
+        scaleInput.value = 100;
+        widthInput.value = img.width;
+        heightInput.value = img.height;
+
+        imageInfo.textContent = `Original Image Size: ${img.width} x ${img.height}`;
         drawScene();
       };
       img.src = e.target.result;
@@ -160,20 +154,10 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function clearImage() {
+    originalImage = null;
     currentImage = null;
     imageInfo.textContent = '';
     drawScene();
-  }
-
-  function updateCanvasSize() {
-    const newWidth = parseInt(canvasWidthInput.value, 10);
-    const newHeight = parseInt(canvasHeightInput.value, 10);
-
-    if (!isNaN(newWidth) && !isNaN(newHeight)) {
-      editorCanvas.width = newWidth;
-      editorCanvas.height = newHeight;
-      drawScene();
-    }
   }
 
   function drawScene() {
@@ -185,23 +169,18 @@ document.addEventListener('DOMContentLoaded', () => {
     ctx.fillRect(0, 0, editorCanvas.width, editorCanvas.height);
 
     if (currentImage) {
-      // Center the image
+      // Draw the image centered
       const imageX = (editorCanvas.width - currentImage.width) / 2;
       const imageY = (editorCanvas.height - currentImage.height) / 2;
       ctx.drawImage(currentImage, imageX, imageY);
     }
 
+    // Markers are drawn at their absolute canvas coordinates
     markers.forEach(marker => {
-      drawMarker(marker);
+      if (marker.cachedImage) {
+        ctx.drawImage(marker.cachedImage, marker.x, marker.y);
+      }
     });
-  }
-
-  function drawMarker(marker) {
-    if (marker.cachedImage) {
-      const drawX = Math.round(marker.x);
-      const drawY = Math.round(marker.y);
-      ctx.drawImage(marker.cachedImage, drawX, drawY);
-    }
   }
 
   function saveCompositeImage() {
@@ -295,77 +274,95 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function onCanvasMouseDown(e) {
     const rect = editorCanvas.getBoundingClientRect();
-    const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
+    const scaleX = editorCanvas.width / rect.width;
+    const scaleY = editorCanvas.height / rect.height;
 
+    // Mouse coordinates in canvas space
+    const mouseX = (e.clientX - rect.left) * scaleX;
+    const mouseY = (e.clientY - rect.top) * scaleY;
+
+    let selectedMarker = null;
     for (let i = markers.length - 1; i >= 0; i--) {
       const marker = markers[i];
-      const mx = Math.round(marker.x);
-      const my = Math.round(marker.y);
-      const ms = Math.round(marker.size);
+      const mx = marker.x;
+      const my = marker.y;
+      const ms = marker.size;
 
       if (mouseX >= mx && mouseX <= mx + ms &&
           mouseY >= my && mouseY <= my + ms) {
+        selectedMarker = marker;
         draggedMarker = marker;
         dragOffsetX = mouseX - mx;
         dragOffsetY = mouseY - my;
         break;
       }
     }
+
+    // For debugging:
+    console.log('MouseDown:', { mouseX, mouseY }, 'Selected Marker:', selectedMarker, 'dragOffsetX:', dragOffsetX, 'dragOffsetY:', dragOffsetY);
   }
 
   function onCanvasMouseMove(e) {
-    if (draggedMarker) {
-      const rect = editorCanvas.getBoundingClientRect();
-      const mouseX = e.clientX - rect.left;
-      const mouseY = e.clientY - rect.top;
+    if (!draggedMarker) return;
 
-      draggedMarker.x = Math.round(mouseX - dragOffsetX);
-      draggedMarker.y = Math.round(mouseY - dragOffsetY);
-      drawScene();
-    }
+    const rect = editorCanvas.getBoundingClientRect();
+    const scaleX = editorCanvas.width / rect.width;
+    const scaleY = editorCanvas.height / rect.height;
+
+    const mouseX = (e.clientX - rect.left) * scaleX;
+    const mouseY = (e.clientY - rect.top) * scaleY;
+
+    draggedMarker.x = mouseX - dragOffsetX;
+    draggedMarker.y = mouseY - dragOffsetY;
+
+    console.log('MouseMove:', {
+      mouseX, mouseY,
+      markerX: draggedMarker.x,
+      markerY: draggedMarker.y
+    });
+
+    drawScene();
   }
 
   function onCanvasMouseUp() {
     if (draggedMarker) {
       draggedMarker.x = Math.round(draggedMarker.x);
       draggedMarker.y = Math.round(draggedMarker.y);
+      console.log('MouseUp Final Marker Pos:', { x: draggedMarker.x, y: draggedMarker.y });
       draggedMarker.notifyUpdate();
       draggedMarker = null;
     }
   }
 
-  function resizeImage() {
-    if (!currentImage) return;
+  function applyImageResize() {
+    if (!originalImage) return;
 
-    const scale = parseFloat(scaleInput.value) / 100;
+    const scale = parseFloat(scaleInput.value) / 100 || 1;
     const newWidth = parseInt(widthInput.value, 10);
     const newHeight = parseInt(heightInput.value, 10);
 
-    let finalWidth = currentImage.width;
-    let finalHeight = currentImage.height;
+    let finalWidth, finalHeight;
 
     if (!isNaN(newWidth) && !isNaN(newHeight)) {
       finalWidth = newWidth;
       finalHeight = newHeight;
     } else if (!isNaN(newWidth)) {
       finalWidth = newWidth;
-      finalHeight = Math.round((currentImage.height / currentImage.width) * newWidth);
+      finalHeight = Math.round((originalImage.height / originalImage.width) * newWidth);
     } else if (!isNaN(newHeight)) {
       finalHeight = newHeight;
-      finalWidth = Math.round((currentImage.width / currentImage.height) * newHeight);
+      finalWidth = Math.round((originalImage.width / originalImage.height) * newHeight);
     } else {
-      finalWidth = Math.round(currentImage.width * scale);
-      finalHeight = Math.round(currentImage.height * scale);
+      finalWidth = Math.round(originalImage.width * scale);
+      finalHeight = Math.round(originalImage.height * scale);
     }
 
-    // Create a temporary canvas to resize the image
     const tempCanvas = document.createElement('canvas');
     tempCanvas.width = finalWidth;
     tempCanvas.height = finalHeight;
     const tempCtx = tempCanvas.getContext('2d');
     tempCtx.imageSmoothingEnabled = false;
-    tempCtx.drawImage(currentImage, 0, 0, finalWidth, finalHeight);
+    tempCtx.drawImage(originalImage, 0, 0, finalWidth, finalHeight);
 
     const resizedImage = new Image();
     resizedImage.onload = () => {
@@ -373,8 +370,17 @@ document.addEventListener('DOMContentLoaded', () => {
       drawScene();
     };
     resizedImage.src = tempCanvas.toDataURL();
+  }
 
-    imageInfo.textContent = `Image Size: ${finalWidth} x ${finalHeight}`;
+  function applyCanvasResize() {
+    const newWidth = parseInt(canvasWidthInput.value, 10);
+    const newHeight = parseInt(canvasHeightInput.value, 10);
+
+    if (!isNaN(newWidth) && !isNaN(newHeight)) {
+      editorCanvas.width = newWidth;
+      editorCanvas.height = newHeight;
+      drawScene();
+    }
   }
 
 });
