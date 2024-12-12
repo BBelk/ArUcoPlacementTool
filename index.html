@@ -28,6 +28,9 @@
     }
     .control-group {
       margin-bottom: 15px;
+      border: 1px solid #ccc;
+      padding: 10px;
+      border-radius: 4px;
     }
     label {
       display: block;
@@ -52,6 +55,7 @@
       padding: 5px;
       margin-bottom: 10px;
       position: relative;
+      border-radius: 4px;
     }
     .marker-panel h4 {
       margin-top: 0;
@@ -100,17 +104,50 @@
   </style>
 </head>
 <body>
-
-
   <div class="container">
     <div class="sidebar">
       <h2>ArUco Placement Tool</h2>
-    <button onclick="window.location='finder.html'">Switch to Finder</button>
+      <button onclick="window.location='finder.html'">Switch to Finder</button>
+
       <div class="control-group">
         <label for="imageUpload">Upload Image:</label>
         <input type="file" id="imageUpload" accept="image/*">
         <div id="imageInfo"></div>
         <button id="clearImageBtn">Clear Image</button>
+      </div>
+
+      <div class="control-group">
+        <h3>Image Controls</h3>
+        <div style="display: flex; gap: 10px;">
+          <div style="flex: 1;">
+            <label for="widthInput">Width (px):</label>
+            <input type="number" id="widthInput" min="1" placeholder="Optional">
+          </div>
+          <div style="flex: 1;">
+            <label for="heightInput">Height (px):</label>
+            <input type="number" id="heightInput" min="1" placeholder="Optional">
+          </div>
+        </div>
+      </div>
+
+      <div class="control-group">
+        <h3>Canvas Settings</h3>
+        
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <label for="bgColorPicker" style="margin: 0;">Color:</label>
+          <input type="color" id="bgColorPicker" value="#ffffff">
+        </div>
+      
+        <div style="display: flex; gap: 10px; margin-top: 10px;">
+          <div style="flex: 1;">
+            <label for="canvasWidthInput">Canvas Width (px):</label>
+            <input type="number" id="canvasWidthInput" min="1" value="800">
+          </div>
+          <div style="flex: 1;">
+            <label for="canvasHeightInput">Canvas Height (px):</label>
+            <input type="number" id="canvasHeightInput" min="1" value="600">
+          </div>
+        </div>
       </div>
 
       <div class="control-group">
@@ -133,18 +170,23 @@
         <div id="markerList"></div>
       </div>
 
-      <div class="control-group">
-        <button id="saveImageBtn">Save Composite Image</button>        
+      <div class="control-group">      
+        <label for="formatSelect">Format:</label>
+        <select id="formatSelect">
+          <option value="png">PNG</option>
+          <option value="jpg">JPG</option>
+          <option value="webp">WebP</option>
+        </select>
+      
+        <button id="saveImageBtn">Save Composite Image</button>
         <button id="exportMarkersBtn">Export Markers</button>
         <button id="importMarkersBtn">Import Markers</button>
         <input type="file" id="importFileInput" accept="application/json" style="display:none;">
       </div>
-      
-
     </div>
 
     <div class="main">
-      <canvas id="editorCanvas"></canvas>
+      <canvas id="editorCanvas" width="800" height="600"></canvas>
     </div>
   </div>
 
