@@ -13,7 +13,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const clearImageBtn = document.getElementById('clearImageBtn');
   const imageInfo = document.getElementById('imageInfo');
 
-  const scaleInput = document.getElementById('scaleInput');
   const widthInput = document.getElementById('widthInput');
   const heightInput = document.getElementById('heightInput');
   const bgColorPicker = document.getElementById('bgColorPicker');
@@ -70,7 +69,7 @@ document.addEventListener('DOMContentLoaded', () => {
   bgColorPicker.addEventListener('input', drawScene);
 
   // Apply image resizing when user finishes editing (blur or Enter)
-  [scaleInput, widthInput, heightInput].forEach(el => {
+  [widthInput, heightInput].forEach(el => {
     el.addEventListener('blur', applyImageResize);
     el.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') applyImageResize(); });
   });
@@ -140,8 +139,7 @@ document.addEventListener('DOMContentLoaded', () => {
       img.onload = () => {
         originalImage = img;
         currentImage = img;
-        // Prefill the values
-        scaleInput.value = 100;
+
         widthInput.value = img.width;
         heightInput.value = img.height;
 
@@ -208,10 +206,10 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function exportMarkers() {
-    // Include canvas size in the exported data
     const data = {
       canvasWidth: editorCanvas.width,
       canvasHeight: editorCanvas.height,
+      backgroundColor: bgColorPicker.value, // Save the background color
       markers: markers.map(m => ({
         dictionaryName: m.dictionaryName,
         arucoId: m.arucoId,
@@ -220,7 +218,7 @@ document.addEventListener('DOMContentLoaded', () => {
         scale: m.size
       }))
     };
-
+  
     const json = JSON.stringify(data, null, 2);
     const blob = new Blob([json], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -233,13 +231,13 @@ document.addEventListener('DOMContentLoaded', () => {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   }
-
+  
   function importMarkers(file) {
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
         const data = JSON.parse(e.target.result);
-
+  
         // Clear existing markers
         markers.forEach(m => {
           if (m.uiElement && m.uiElement.parentNode) {
@@ -247,7 +245,7 @@ document.addEventListener('DOMContentLoaded', () => {
           }
         });
         markers = [];
-
+  
         // If canvas size info is present, update canvas size
         if (typeof data.canvasWidth === 'number' && typeof data.canvasHeight === 'number') {
           editorCanvas.width = data.canvasWidth;
@@ -255,7 +253,12 @@ document.addEventListener('DOMContentLoaded', () => {
           canvasWidthInput.value = data.canvasWidth;
           canvasHeightInput.value = data.canvasHeight;
         }
-
+  
+        // If background color info is present, update the background color
+        if (data.backgroundColor) {
+          bgColorPicker.value = data.backgroundColor;
+        }
+  
         if (Array.isArray(data.markers)) {
           data.markers.forEach(d => {
             if (d.dictionaryName && typeof d.arucoId === 'number' && typeof d.x === 'number' && typeof d.y === 'number' && typeof d.scale === 'number') {
@@ -263,7 +266,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
           });
         }
-
+  
         drawScene();
       } catch (err) {
         alert('Invalid JSON file');
@@ -271,7 +274,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     reader.readAsText(file);
   }
-
+  
   function onCanvasMouseDown(e) {
     const rect = editorCanvas.getBoundingClientRect();
     const scaleX = editorCanvas.width / rect.width;
@@ -315,11 +318,12 @@ document.addEventListener('DOMContentLoaded', () => {
     draggedMarker.x = mouseX - dragOffsetX;
     draggedMarker.y = mouseY - dragOffsetY;
 
-    console.log('MouseMove:', {
-      mouseX, mouseY,
-      markerX: draggedMarker.x,
-      markerY: draggedMarker.y
-    });
+    // // this took a minute
+    // console.log('MouseMove:', {
+    //   mouseX, mouseY,
+    //   markerX: draggedMarker.x,
+    //   markerY: draggedMarker.y
+    // });
 
     drawScene();
   }
@@ -337,7 +341,6 @@ document.addEventListener('DOMContentLoaded', () => {
   function applyImageResize() {
     if (!originalImage) return;
 
-    const scale = parseFloat(scaleInput.value) / 100 || 1;
     const newWidth = parseInt(widthInput.value, 10);
     const newHeight = parseInt(heightInput.value, 10);
 
