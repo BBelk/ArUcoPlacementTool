@@ -136,7 +136,22 @@ class MarkerObj {
       }
     });
 
-    scaleInput.addEventListener('input', () => {
+    scaleInput.addEventListener('keydown', (e) => {
+      if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && this.currentMarkSize) {
+        const val = parseInt(scaleInput.value, 10);
+        if (!isNaN(val)) {
+          const snapped = this.snapToMultiple(val, this.currentMarkSize);
+          if (snapped !== val) {
+            scaleInput.value = snapped;
+          }
+          this.size = snapped;
+          this.regenerateMarker();
+        }
+      }
+    });
+    
+    // Handle blur or enter key (change event) for typed values
+    scaleInput.addEventListener('change', () => {
       if (this.currentMarkSize) {
         const val = parseInt(scaleInput.value, 10);
         if (!isNaN(val)) {
