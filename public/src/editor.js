@@ -215,7 +215,9 @@ document.addEventListener('DOMContentLoaded', () => {
         arucoId: m.arucoId,
         x: m.x,
         y: m.y,
-        scale: m.size
+        scale: m.size,
+        anchorX: m.anchorX, // Include anchorX
+        anchorY: m.anchorY  // Include anchorY
       }))
     };
   
@@ -231,6 +233,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   }
+  
   
   function importMarkers(file) {
     const reader = new FileReader();
@@ -259,10 +262,37 @@ document.addEventListener('DOMContentLoaded', () => {
           bgColorPicker.value = data.backgroundColor;
         }
   
+        // Import markers
         if (Array.isArray(data.markers)) {
           data.markers.forEach(d => {
-            if (d.dictionaryName && typeof d.arucoId === 'number' && typeof d.x === 'number' && typeof d.y === 'number' && typeof d.scale === 'number') {
-              addMarker(d.dictionaryName, d.arucoId, Math.round(d.x), Math.round(d.y), Math.round(d.scale));
+            if (
+              d.dictionaryName &&
+              typeof d.arucoId === 'number' &&
+              typeof d.x === 'number' &&
+              typeof d.y === 'number' &&
+              typeof d.scale === 'number'
+            ) {
+              // Create a new marker with anchorX and anchorY if present, otherwise default to 0
+              const marker = new MarkerObj(
+                d.dictionaryName,
+                d.arucoId,
+                Math.round(d.x),
+                Math.round(d.y),
+                Math.round(d.scale),
+                () => drawScene(),
+                (m) => removeMarker(m),
+                d.anchorX !== undefined ? d.anchorX : 0,
+                d.anchorY !== undefined ? d.anchorY : 0
+              );
+  
+              // Append the marker's UI element to the marker list
+              markerList.appendChild(marker.uiElement);
+  
+              // Restore anchor selection to ensure the grid cells are highlighted
+              marker.restoreAnchorSelection();
+  
+              // Add the marker to the markers array
+              markers.push(marker);
             }
           });
         }
@@ -270,10 +300,13 @@ document.addEventListener('DOMContentLoaded', () => {
         drawScene();
       } catch (err) {
         alert('Invalid JSON file');
+        console.error(err);
       }
     };
     reader.readAsText(file);
   }
+  
+  
   
   function onCanvasMouseDown(e) {
     const rect = editorCanvas.getBoundingClientRect();
