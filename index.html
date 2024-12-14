@@ -29,7 +29,7 @@
     .control-group {
       margin-bottom: 15px;
       border: 1px solid #ccc;
-      padding: 10px;
+      padding: 5px;
       border-radius: 4px;
     }
     label {
@@ -37,11 +37,14 @@
       font-weight: bold;
       margin-bottom: 5px;
     }
+    h3, h4{
+      margin-top: 2px;
+    }
     input[type="file"] {
       margin-bottom: 10px;
     }
     select, input[type="number"], button, input[type="text"] {
-      width: 100%;
+      width: 80%;
       margin-bottom: 10px;
     }
     canvas {
@@ -152,13 +155,10 @@
 
       <!-- Image Upload -->
       <div class="control-group">
+        <h3>Image Controls</h3>
         <label for="imageUpload">Upload Image:</label>
         <input type="file" id="imageUpload" accept="image/*">
-      </div>
-
-      <!-- Image Objects List -->
-      <div class="control-group">
-        <h3>Images</h3>
+        <h4>Images added:</h4>
         <div id="imageList"></div>
       </div>
 
@@ -167,23 +167,42 @@
         <h3>Marker Controls</h3>
         <label for="dictionarySelect">Dictionary:</label>
         <select id="dictionarySelect"></select>
-        <label for="markerIdInput">Marker ID:</label>
-        <input type="number" id="markerIdInput" min="0" value="0">
+        <div style="display: flex; gap: 10px; margin-top: 10px;">
+          <div style="flex: 1;">
+            <label for="markerIdInput">Marker ID:</label>
+          </div>
+          <div style="flex: 1;">
+            <input type="number" id="markerIdInput" min="0" value="0">
+          </div>
+        </div>
         <div id="markerMaxInfo" style="font-size:0.8em;color:#666;"></div>
         <button id="addMarkerBtn">Add Marker</button>
-        <h3>Markers Added:</h3>
+        <h4>Markers Added:</h4>
         <div id="markerList"></div>    
+        </div>
 
-        <label for="formatSelect">Format:</label>
-        <select id="formatSelect">
-          <option value="png">PNG</option>
-          <option value="jpg">JPG</option>
-          <option value="webp">WebP</option>
-        </select>
-      
-        <button id="saveImageBtn">Save Composite Image</button>
-        <button id="exportMarkersBtn">Export Markers</button>
-        <button id="importMarkersBtn">Import Markers</button>
+        <div class="control-group">
+          <h3>Save</h3>
+          <div style="display: flex; gap: 10px; margin-top: 10px;">
+            <div style="flex: 1;">   
+              <select id="formatSelect">
+                <option value="png">PNG</option>
+                <option value="jpg">JPG</option>
+                <option value="webp">WebP</option>
+              </select>
+            </div>
+            <div style="flex: 1;">
+              <button id="saveImageBtn">Save Image</button>
+            </div>
+          </div>
+        <div style="display: flex; gap: 10px; margin-top: 10px;">
+          <div style="flex: 1;">            
+            <button id="exportMarkersBtn">Export Markers</button>
+          </div>
+          <div style="flex: 1;">
+            <button id="importMarkersBtn">Import Markers</button>
+          </div>
+        </div>
         <input type="file" id="importFileInput" accept="application/json" style="display:none;">
       </div>
     </div>
