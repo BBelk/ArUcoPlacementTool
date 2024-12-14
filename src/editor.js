@@ -1,4 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
+  // DOM Elements
   const dictionarySelect = document.getElementById('dictionarySelect');
   const markerIdInput = document.getElementById('markerIdInput');
   const markerMaxInfo = document.getElementById('markerMaxInfo');
@@ -10,11 +11,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const exportMarkersBtn = document.getElementById('exportMarkersBtn');
   const importMarkersBtn = document.getElementById('importMarkersBtn');
   const importFileInput = document.getElementById('importFileInput');
-  const clearImageBtn = document.getElementById('clearImageBtn');
-  const imageInfo = document.getElementById('imageInfo');
+  const imageList = document.getElementById('imageList'); // Container for ImageObj panels
 
-  const widthInput = document.getElementById('widthInput');
-  const heightInput = document.getElementById('heightInput');
   const bgColorPicker = document.getElementById('bgColorPicker');
 
   const canvasWidthInput = document.getElementById('canvasWidthInput');
@@ -22,14 +20,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const ctx = editorCanvas.getContext('2d');
 
+  // State Variables
   let currentDictionaryName = null;
   let currentDictionary = null;
   let markers = [];
 
-  let originalImage = null; // Unaltered original image
-  let currentImage = null;  // Displayed (scaled) image
+  let images = []; // Array of ImageObj instances
 
   let draggedMarker = null;
+  let draggedImage = null; 
   let dragOffsetX = 0;
   let dragOffsetY = 0;
 
@@ -41,20 +40,31 @@ document.addEventListener('DOMContentLoaded', () => {
     dictionarySelect.appendChild(option);
   }
 
+  // Initialize with a default dictionary
   dictionarySelect.value = 'ARUCO_MIP_36h12';
   updateDictionary(dictionarySelect.value);
 
+  // Event Listeners
   dictionarySelect.addEventListener('change', () => {
     updateDictionary(dictionarySelect.value);
   });
 
   markerIdInput.addEventListener('change', updateMarkerIDInfo);
   addMarkerBtn.addEventListener('click', () => { addMarker(); });
-  imageUpload.addEventListener('change', (e) => loadImageFromFile(e.target.files[0]));
-  clearImageBtn.addEventListener('click', clearImage);
-  saveImageBtn.addEventListener('click', saveCompositeImage);
-  exportMarkersBtn.addEventListener('click', exportMarkers);
-  importMarkersBtn.addEventListener('click', () => importFileInput.click());
+
+  // Support multiple files
+  imageUpload.addEventListener('change', (e) => {
+    loadMultipleImagesFromFiles(e.target.files);
+    // Reset the file input to allow uploading the same file again if needed
+    e.target.value = '';
+  });
+
+  // Ensure only one event listener is attached to importMarkersBtn
+  importMarkersBtn.addEventListener('click', () => {
+    console.log('Import Markers button clicked.');
+    importFileInput.click();
+  });
+
   importFileInput.addEventListener('change', (e) => {
     if (e.target.files && e.target.files[0]) {
       importMarkers(e.target.files[0]);
@@ -65,21 +75,39 @@ document.addEventListener('DOMContentLoaded', () => {
   editorCanvas.addEventListener('mousemove', onCanvasMouseMove);
   editorCanvas.addEventListener('mouseup', onCanvasMouseUp);
   editorCanvas.addEventListener('mouseleave', onCanvasMouseUp);
+  saveImageBtn.addEventListener('click', saveCompositeImage);
+  exportMarkersBtn.addEventListener('click', exportMarkers);
 
   bgColorPicker.addEventListener('input', drawScene);
 
-  // Apply image resizing when user finishes editing (blur or Enter)
-  [widthInput, heightInput].forEach(el => {
-    el.addEventListener('blur', applyImageResize);
-    el.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') applyImageResize(); });
-  });
-
-  // Apply canvas resizing when user finishes editing (blur or Enter)
+  // Add 'input' event listeners for immediate resizing via arrow buttons
   [canvasWidthInput, canvasHeightInput].forEach(el => {
+    el.addEventListener('input', applyCanvasResize);
     el.addEventListener('blur', applyCanvasResize);
-    el.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') applyCanvasResize(); });
+    el.addEventListener('keydown', (ev) => { 
+      if (ev.key === 'Enter') applyCanvasResize(); 
+    });
   });
 
+  /**
+   * Initializes the canvas size based on input values.
+   * Sets the canvas to 1920x1080 by default.
+   */
+  function initializeCanvasSize() {
+    const initialWidth = parseInt(canvasWidthInput.value, 10) || 1920;
+    const initialHeight = parseInt(canvasHeightInput.value, 10) || 1080;
+    editorCanvas.width = initialWidth;
+    editorCanvas.height = initialHeight;
+    // Update CSS to reflect the size
+    editorCanvas.style.width = `${initialWidth}px`;
+    editorCanvas.style.height = `${initialHeight}px`;
+    drawScene();
+  }
+
+  /**
+   * Updates the current dictionary based on selection.
+   * @param {string} dicName - The name of the selected dictionary.
+   */
   function updateDictionary(dicName) {
     currentDictionaryName = dicName;
     currentDictionary = new AR.Dictionary(dicName);
@@ -87,6 +115,9 @@ document.addEventListener('DOMContentLoaded', () => {
     markerMaxInfo.textContent = `Max ID: ${currentDictionary.codeList.length - 1}`;
   }
 
+  /**
+   * Ensures the Marker ID does not exceed the maximum allowed.
+   */
   function updateMarkerIDInfo() {
     const val = parseInt(markerIdInput.value, 10);
     if (val > currentDictionary.codeList.length - 1) {
@@ -94,11 +125,18 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  /**
+   * Adds a new marker to the canvas and sidebar.
+   * @param {string} dictionaryName - The dictionary name for the marker.
+   * @param {number} markerID - The ID of the marker.
+   * @param {number} x - The X position of the marker.
+   * @param {number} y - The Y position of the marker.
+   * @param {number} size - The size of the marker.
+   */
   function addMarker(dictionaryName = currentDictionaryName, markerID = parseInt(markerIdInput.value, 10), x = 50, y = 50, size = 100) {
     if (isNaN(markerID)) return;
     if (!currentDictionary) return;
 
-    // Markers now stored in canvas coordinates directly
     x = Math.round(x);
     y = Math.round(y);
     size = Math.round(size);
@@ -121,6 +159,10 @@ document.addEventListener('DOMContentLoaded', () => {
     drawScene();
   }
 
+  /**
+   * Removes a marker from the canvas and sidebar.
+   * @param {MarkerObj} markerObj - The marker object to remove.
+   */
   function removeMarker(markerObj) {
     const index = markers.indexOf(markerObj);
     if (index !== -1) {
@@ -132,48 +174,76 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  function loadImageFromFile(file) {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const img = new Image();
-      img.onload = () => {
-        originalImage = img;
-        currentImage = img;
+  /**
+   * Loads multiple images from file inputs.
+   * @param {FileList} files - The list of files to load.
+   */
+  function loadMultipleImagesFromFiles(files) {
+    // Support multiple image uploads
+    [...files].forEach(file => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          // Center image on canvas
+          const x = (editorCanvas.width - img.width) / 2;
+          const y = (editorCanvas.height - img.height) / 2;
 
-        widthInput.value = img.width;
-        heightInput.value = img.height;
-
-        imageInfo.textContent = `Original Image Size: ${img.width} x ${img.height}`;
-        drawScene();
+          const imgObj = new ImageObj(
+            img,
+            x,
+            y,
+            img.width,
+            img.height,
+            () => {
+              drawScene();
+            },
+            (io) => {
+              removeImageObj(io);
+            }
+          );
+          images.push(imgObj);
+          imageList.appendChild(imgObj.uiElement);
+          drawScene();
+        };
+        img.src = e.target.result;
       };
-      img.src = e.target.result;
-    };
-    reader.readAsDataURL(file);
+      reader.readAsDataURL(file);
+    });
   }
 
-  function clearImage() {
-    originalImage = null;
-    currentImage = null;
-    imageInfo.textContent = '';
-    drawScene();
+  /**
+   * Removes an ImageObj from the canvas and sidebar.
+   * @param {ImageObj} io - The ImageObj to remove.
+   */
+  function removeImageObj(io) {
+    const index = images.indexOf(io);
+    if (index !== -1) {
+      images.splice(index, 1);
+      if (io.uiElement && io.uiElement.parentNode) {
+        io.uiElement.parentNode.removeChild(io.uiElement);
+      }
+      drawScene();
+    }
   }
 
+  /**
+   * Draws the entire scene, including background, images, and markers.
+   */
   function drawScene() {
     ctx.imageSmoothingEnabled = false;
     ctx.clearRect(0, 0, editorCanvas.width, editorCanvas.height);
 
-    // Set the background color
+    // Set background color
     ctx.fillStyle = bgColorPicker.value;
     ctx.fillRect(0, 0, editorCanvas.width, editorCanvas.height);
 
-    if (currentImage) {
-      // Draw the image centered
-      const imageX = (editorCanvas.width - currentImage.width) / 2;
-      const imageY = (editorCanvas.height - currentImage.height) / 2;
-      ctx.drawImage(currentImage, imageX, imageY);
-    }
+    // Draw images first (beneath markers)
+    images.forEach(io => {
+      ctx.drawImage(io.image, io.x, io.y, io.width, io.height);
+    });
 
-    // Markers are drawn at their absolute canvas coordinates
+    // Draw markers on top
     markers.forEach(marker => {
       if (marker.cachedImage) {
         ctx.drawImage(marker.cachedImage, marker.x, marker.y);
@@ -181,22 +251,25 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  /**
+   * Saves the current canvas as an image file.
+   */
   function saveCompositeImage() {
     const formatSelect = document.getElementById('formatSelect');
-  
-    // Get the selected format and filename
+
     const format = formatSelect.value;
     let filename = 'composite';
-  
+
     const extension = format === 'jpg' ? 'jpg' : format;
     if (!filename.endsWith(`.${extension}`)) {
       filename += `.${extension}`;
     }
-  
+
     const mimeType = format === 'jpg' ? 'image/jpeg' : `image/${format}`;
-    const dataURL = editorCanvas.toDataURL(mimeType, format === 'jpg' ? 0.92 : 1.0);
-  
-    // Create a download link and trigger the download
+    const quality = format === 'jpg' ? 0.92 : 1.0; // JPEG quality
+
+    const dataURL = editorCanvas.toDataURL(mimeType, quality);
+
     const a = document.createElement('a');
     a.href = dataURL;
     a.download = filename;
@@ -205,26 +278,29 @@ document.addEventListener('DOMContentLoaded', () => {
     document.body.removeChild(a);
   }
 
+  /**
+   * Exports markers to a JSON file.
+   */
   function exportMarkers() {
     const data = {
       canvasWidth: editorCanvas.width,
       canvasHeight: editorCanvas.height,
-      backgroundColor: bgColorPicker.value, // Save the background color
+      backgroundColor: bgColorPicker.value,
       markers: markers.map(m => ({
         dictionaryName: m.dictionaryName,
         arucoId: m.arucoId,
         x: m.x,
         y: m.y,
         scale: m.size,
-        anchorX: m.anchorX, // Include anchorX
-        anchorY: m.anchorY  // Include anchorY
+        anchorX: m.anchorX,
+        anchorY: m.anchorY
       }))
     };
-  
+
     const json = JSON.stringify(data, null, 2);
     const blob = new Blob([json], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
-  
+
     const a = document.createElement('a');
     a.href = url;
     a.download = 'markers.json';
@@ -233,14 +309,17 @@ document.addEventListener('DOMContentLoaded', () => {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   }
-  
-  
+
+  /**
+   * Imports markers from a JSON file.
+   * @param {File} file - The JSON file to import.
+   */
   function importMarkers(file) {
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
         const data = JSON.parse(e.target.result);
-  
+
         // Clear existing markers
         markers.forEach(m => {
           if (m.uiElement && m.uiElement.parentNode) {
@@ -248,20 +327,25 @@ document.addEventListener('DOMContentLoaded', () => {
           }
         });
         markers = [];
-  
+
+        // We do not clear images here since they are not saved/loaded from JSON (as per requirement)
+
         // If canvas size info is present, update canvas size
         if (typeof data.canvasWidth === 'number' && typeof data.canvasHeight === 'number') {
           editorCanvas.width = data.canvasWidth;
           editorCanvas.height = data.canvasHeight;
+          // Update CSS to reflect new canvas size
+          editorCanvas.style.width = `${data.canvasWidth}px`;
+          editorCanvas.style.height = `${data.canvasHeight}px`;
           canvasWidthInput.value = data.canvasWidth;
           canvasHeightInput.value = data.canvasHeight;
         }
-  
+
         // If background color info is present, update the background color
         if (data.backgroundColor) {
           bgColorPicker.value = data.backgroundColor;
         }
-  
+
         // Import markers
         if (Array.isArray(data.markers)) {
           data.markers.forEach(d => {
@@ -272,7 +356,6 @@ document.addEventListener('DOMContentLoaded', () => {
               typeof d.y === 'number' &&
               typeof d.scale === 'number'
             ) {
-              // Create a new marker with anchorX and anchorY if present, otherwise default to 0
               const marker = new MarkerObj(
                 d.dictionaryName,
                 d.arucoId,
@@ -284,19 +367,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 d.anchorX !== undefined ? d.anchorX : 0,
                 d.anchorY !== undefined ? d.anchorY : 0
               );
-  
-              // Append the marker's UI element to the marker list
               markerList.appendChild(marker.uiElement);
-  
-              // Restore anchor selection to ensure the grid cells are highlighted
               marker.restoreAnchorSelection();
-  
-              // Add the marker to the markers array
               markers.push(marker);
             }
           });
         }
-  
+
         drawScene();
       } catch (err) {
         alert('Invalid JSON file');
@@ -305,19 +382,22 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     reader.readAsText(file);
   }
-  
-  
-  
+
+  /**
+   * Handles mouse down events on the canvas for dragging markers or images.
+   * @param {MouseEvent} e - The mouse event.
+   */
   function onCanvasMouseDown(e) {
     const rect = editorCanvas.getBoundingClientRect();
     const scaleX = editorCanvas.width / rect.width;
     const scaleY = editorCanvas.height / rect.height;
-
-    // Mouse coordinates in canvas space
     const mouseX = (e.clientX - rect.left) * scaleX;
     const mouseY = (e.clientY - rect.top) * scaleY;
 
-    let selectedMarker = null;
+    draggedMarker = null;
+    draggedImage = null;
+
+    // **Check Markers First (Topmost)**
     for (let i = markers.length - 1; i >= 0; i--) {
       const marker = markers[i];
       const mx = marker.x;
@@ -326,41 +406,60 @@ document.addEventListener('DOMContentLoaded', () => {
 
       if (mouseX >= mx && mouseX <= mx + ms &&
           mouseY >= my && mouseY <= my + ms) {
-        selectedMarker = marker;
         draggedMarker = marker;
         dragOffsetX = mouseX - mx;
         dragOffsetY = mouseY - my;
+        return; // If marker is selected, do not check images
+      }
+    }
+
+    // **Check Images Second**
+    for (let i = images.length - 1; i >= 0; i--) {
+      const io = images[i];
+      if (mouseX >= io.x && mouseX <= io.x + io.width &&
+          mouseY >= io.y && mouseY <= io.y + io.height) {
+        draggedImage = io;
+        dragOffsetX = mouseX - io.x;
+        dragOffsetY = mouseY - io.y;
         break;
       }
     }
 
-    // For debugging:
-    console.log('MouseDown:', { mouseX, mouseY }, 'Selected Marker:', selectedMarker, 'dragOffsetX:', dragOffsetX, 'dragOffsetY:', dragOffsetY);
+    // Debugging Log
+    console.log('MouseDown:', { mouseX, mouseY }, 'Selected Marker:', draggedMarker, 'Selected Image:', draggedImage, 'dragOffsetX:', dragOffsetX, 'dragOffsetY:', dragOffsetY);
   }
 
+  /**
+   * Handles mouse move events on the canvas for dragging markers or images.
+   * @param {MouseEvent} e - The mouse event.
+   */
   function onCanvasMouseMove(e) {
-    if (!draggedMarker) return;
+    if (!draggedMarker && !draggedImage) return;
 
     const rect = editorCanvas.getBoundingClientRect();
     const scaleX = editorCanvas.width / rect.width;
     const scaleY = editorCanvas.height / rect.height;
-
     const mouseX = (e.clientX - rect.left) * scaleX;
     const mouseY = (e.clientY - rect.top) * scaleY;
 
-    draggedMarker.x = mouseX - dragOffsetX;
-    draggedMarker.y = mouseY - dragOffsetY;
+    if (draggedMarker) {
+      // Optional: Add boundary checks here
+      draggedMarker.x = mouseX - dragOffsetX;
+      draggedMarker.y = mouseY - dragOffsetY;
+    }
 
-    // // this took a minute
-    // console.log('MouseMove:', {
-    //   mouseX, mouseY,
-    //   markerX: draggedMarker.x,
-    //   markerY: draggedMarker.y
-    // });
+    if (draggedImage) {
+      // Optional: Add boundary checks here
+      draggedImage.x = mouseX - dragOffsetX;
+      draggedImage.y = mouseY - dragOffsetY;
+    }
 
     drawScene();
   }
 
+  /**
+   * Handles mouse up events on the canvas to stop dragging.
+   */
   function onCanvasMouseUp() {
     if (draggedMarker) {
       draggedMarker.x = Math.round(draggedMarker.x);
@@ -369,54 +468,47 @@ document.addEventListener('DOMContentLoaded', () => {
       draggedMarker.notifyUpdate();
       draggedMarker = null;
     }
-  }
 
-  function applyImageResize() {
-    if (!originalImage) return;
-
-    const newWidth = parseInt(widthInput.value, 10);
-    const newHeight = parseInt(heightInput.value, 10);
-
-    let finalWidth, finalHeight;
-
-    if (!isNaN(newWidth) && !isNaN(newHeight)) {
-      finalWidth = newWidth;
-      finalHeight = newHeight;
-    } else if (!isNaN(newWidth)) {
-      finalWidth = newWidth;
-      finalHeight = Math.round((originalImage.height / originalImage.width) * newWidth);
-    } else if (!isNaN(newHeight)) {
-      finalHeight = newHeight;
-      finalWidth = Math.round((originalImage.width / originalImage.height) * newHeight);
-    } else {
-      finalWidth = Math.round(originalImage.width * scale);
-      finalHeight = Math.round(originalImage.height * scale);
+    if (draggedImage) {
+      draggedImage.x = Math.round(draggedImage.x);
+      draggedImage.y = Math.round(draggedImage.y);
+      draggedImage.notifyUpdate();
+      draggedImage = null;
     }
-
-    const tempCanvas = document.createElement('canvas');
-    tempCanvas.width = finalWidth;
-    tempCanvas.height = finalHeight;
-    const tempCtx = tempCanvas.getContext('2d');
-    tempCtx.imageSmoothingEnabled = false;
-    tempCtx.drawImage(originalImage, 0, 0, finalWidth, finalHeight);
-
-    const resizedImage = new Image();
-    resizedImage.onload = () => {
-      currentImage = resizedImage;
-      drawScene();
-    };
-    resizedImage.src = tempCanvas.toDataURL();
   }
 
+  /**
+   * Applies resizing to the canvas based on user input.
+   * Resizes immediately when the user changes the value via arrow buttons.
+   */
   function applyCanvasResize() {
     const newWidth = parseInt(canvasWidthInput.value, 10);
     const newHeight = parseInt(canvasHeightInput.value, 10);
 
+    console.log(`Attempting to resize canvas to ${newWidth}x${newHeight}`);
+
     if (!isNaN(newWidth) && !isNaN(newHeight)) {
       editorCanvas.width = newWidth;
       editorCanvas.height = newHeight;
+      // Update CSS to reflect new canvas size
+      editorCanvas.style.width = `${newWidth}px`;
+      editorCanvas.style.height = `${newHeight}px`;
+      console.log(`Canvas resized to ${editorCanvas.width}x${editorCanvas.height}`);
       drawScene();
+    } else {
+      console.warn('Invalid canvas size inputs.');
     }
   }
 
+  /**
+   * Applies resizing to the image while maintaining aspect ratio.
+   * **Note:** Currently not implemented for multiple images.
+   */
+  function applyImageResize() {
+    // This function is currently not applicable for multiple images.
+    console.warn("applyImageResize currently not implemented for multiple images.");
+  }
+
+  // Initialize the canvas size on page load
+  initializeCanvasSize();
 });
