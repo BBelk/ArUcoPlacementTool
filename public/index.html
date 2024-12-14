@@ -50,34 +50,36 @@
       max-width: 90%;
       max-height: 90%;
     }
-    .marker-panel {
+    .marker-panel, .image-panel {
       border: 1px solid #ccc;
       padding: 5px;
       margin-bottom: 10px;
       position: relative;
       border-radius: 4px;
+      display: flex;
+      flex-direction: column;
     }
-    .marker-panel h4 {
+    .marker-panel h4, .image-panel h4 {
       margin-top: 0;
       margin-bottom: 5px;
     }
-    .marker-row {
+    .marker-row, .image-row {
       display: flex;
       align-items: center;
       margin-bottom: 5px;
     }
-    .marker-row label {
+    .marker-row label, .image-row label {
       flex: 0 0 60px;
       margin-bottom: 0;
     }
-    .marker-row input, .marker-row select {
+    .marker-row input, .marker-row select, .image-row input {
       flex: 1;
     }
-    .marker-image {
+    .marker-image, .image-thumbnail {
       text-align: center;
       margin-bottom: 10px;
     }
-    .marker-image img {
+    .marker-image img, .image-thumbnail img {
       max-width: 80px;
       max-height: 80px;
       border: 1px solid #ccc;
@@ -97,9 +99,27 @@
       cursor: pointer;
       padding: 0;
     }
-    #imageInfo {
-      font-size:0.9em;
-      color:#333;
+    #imageList {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    #imageList .image-panel {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+    }
+    .image-thumbnail {
+      width: 100px;
+      height: 100px;
+      overflow: hidden;
+      margin-bottom: 5px;
+    }
+    .image-thumbnail img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
     }
   </style>
 </head>
@@ -109,27 +129,7 @@
       <h2>ArUco Placement Tool</h2>
       <button onclick="window.location='finder.html'">Switch to Finder</button>
 
-      <div class="control-group">
-        <label for="imageUpload">Upload Image:</label>
-        <input type="file" id="imageUpload" accept="image/*">
-        <div id="imageInfo"></div>
-        <button id="clearImageBtn">Clear Image</button>
-      </div>
-
-      <div class="control-group">
-        <h3>Image Controls</h3>
-        <div style="display: flex; gap: 10px;">
-          <div style="flex: 1;">
-            <label for="widthInput">Width (px):</label>
-            <input type="number" id="widthInput" min="1">
-          </div>
-          <div style="flex: 1;">
-            <label for="heightInput">Height (px):</label>
-            <input type="number" id="heightInput" min="1">
-          </div>
-        </div>
-      </div>
-
+      <!-- Canvas Settings -->
       <div class="control-group">
         <h3>Canvas Settings</h3>
         
@@ -141,16 +141,30 @@
         <div style="display: flex; gap: 10px; margin-top: 10px;">
           <div style="flex: 1;">
             <label for="canvasWidthInput">Canvas Width (px):</label>
-            <input type="number" id="canvasWidthInput" min="1" value="800">
+            <input type="number" id="canvasWidthInput" min="1" value="1920">
           </div>
           <div style="flex: 1;">
             <label for="canvasHeightInput">Canvas Height (px):</label>
-            <input type="number" id="canvasHeightInput" min="1" value="600">
+            <input type="number" id="canvasHeightInput" min="1" value="1080">
           </div>
         </div>
       </div>
 
+      <!-- Image Upload -->
       <div class="control-group">
+        <label for="imageUpload">Upload Image:</label>
+        <input type="file" id="imageUpload" accept="image/*">
+      </div>
+
+      <!-- Image Objects List -->
+      <div class="control-group">
+        <h3>Images</h3>
+        <div id="imageList"></div>
+      </div>
+
+      <!-- Marker Controls -->
+      <div class="control-group">
+        <h3>Marker Controls</h3>
         <label for="dictionarySelect">Dictionary:</label>
         <select id="dictionarySelect"></select>
         <label for="markerIdInput">Marker ID:</label>
@@ -159,6 +173,7 @@
         <button id="addMarkerBtn">Add Marker</button>
         <h3>Markers Added:</h3>
         <div id="markerList"></div>    
+
         <label for="formatSelect">Format:</label>
         <select id="formatSelect">
           <option value="png">PNG</option>
@@ -203,6 +218,7 @@
 
   <!-- Marker object script -->
   <script src="./src/markerObj.js"></script>
+  <script src="./src/imageObj.js"></script>
 
   <!-- Editor script -->
   <script src="./src/editor.js"></script>
