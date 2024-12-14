@@ -20,19 +20,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const ctx = editorCanvas.getContext('2d');
 
-  // State Variables
   let currentDictionaryName = null;
   let currentDictionary = null;
   let markers = [];
 
-  let images = []; // Array of ImageObj instances
+  let images = [];
 
   let draggedMarker = null;
   let draggedImage = null; 
   let dragOffsetX = 0;
   let dragOffsetY = 0;
 
-  // Populate dictionary options
   for (const dicName in AR.DICTIONARIES) {
     const option = document.createElement('option');
     option.value = dicName;
@@ -40,11 +38,9 @@ document.addEventListener('DOMContentLoaded', () => {
     dictionarySelect.appendChild(option);
   }
 
-  // Initialize with a default dictionary
   dictionarySelect.value = 'ARUCO_MIP_36h12';
   updateDictionary(dictionarySelect.value);
 
-  // Event Listeners
   dictionarySelect.addEventListener('change', () => {
     updateDictionary(dictionarySelect.value);
   });
@@ -52,14 +48,11 @@ document.addEventListener('DOMContentLoaded', () => {
   markerIdInput.addEventListener('change', updateMarkerIDInfo);
   addMarkerBtn.addEventListener('click', () => { addMarker(); });
 
-  // Support multiple files
   imageUpload.addEventListener('change', (e) => {
     loadMultipleImagesFromFiles(e.target.files);
-    // Reset the file input to allow uploading the same file again if needed
     e.target.value = '';
   });
 
-  // Ensure only one event listener is attached to importMarkersBtn
   importMarkersBtn.addEventListener('click', () => {
     console.log('Import Markers button clicked.');
     importFileInput.click();
@@ -498,15 +491,6 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
       console.warn('Invalid canvas size inputs.');
     }
-  }
-
-  /**
-   * Applies resizing to the image while maintaining aspect ratio.
-   * **Note:** Currently not implemented for multiple images.
-   */
-  function applyImageResize() {
-    // This function is currently not applicable for multiple images.
-    console.warn("applyImageResize currently not implemented for multiple images.");
   }
 
   // Initialize the canvas size on page load
