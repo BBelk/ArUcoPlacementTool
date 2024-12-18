@@ -1,7 +1,8 @@
 class MarkerObj {
   constructor(arucoDictionary, arucoId, x, y, size, onUpdate, onDelete, anchorX = 0, anchorY = 0) {
     this.dictionaryName = arucoDictionary;
-    this.arucoId = arucoId | 0;
+    // If QR_CODE selected, treat arucoId as text/string. Otherwise, numeric.
+    this.arucoId = (this.dictionaryName === 'QR_CODE') ? String(arucoId) : (arucoId | 0);
 
     // Internal storage: always top-left corner
     this.x = x | 0;
@@ -46,15 +47,25 @@ class MarkerObj {
     const dictLabel = document.createElement('label');
     dictLabel.textContent = 'Dict:';
     const dictSelect = document.createElement('select');
+
+    // Add all ARUCO dictionaries first
     for (const dicName in AR.DICTIONARIES) {
       const opt = document.createElement('option');
       opt.value = dicName;
       opt.textContent = dicName;
-      if (dicName === this.dictionaryName) {
-        opt.selected = true;
-      }
       dictSelect.appendChild(opt);
     }
+
+    // Add QR_CODE last
+    {
+      const qrOpt = document.createElement('option');
+      qrOpt.value = 'QR_CODE';
+      qrOpt.textContent = 'QR Code';
+      dictSelect.appendChild(qrOpt);
+    }
+
+    dictSelect.value = this.dictionaryName;
+
     dictionaryRow.appendChild(dictLabel);
     dictionaryRow.appendChild(dictSelect);
     container.appendChild(dictionaryRow);
@@ -65,8 +76,15 @@ class MarkerObj {
     const idLabel = document.createElement('label');
     idLabel.textContent = 'ID:';
     const idInput = document.createElement('input');
-    idInput.type = 'number';
-    idInput.value = this.arucoId;
+
+    if (this.dictionaryName === 'QR_CODE') {
+      idInput.type = 'text';
+      idInput.value = this.arucoId;
+    } else {
+      idInput.type = 'number';
+      idInput.value = this.arucoId | 0;
+    }
+
     idRow.appendChild(idLabel);
     idRow.appendChild(idInput);
     container.appendChild(idRow);
@@ -119,7 +137,7 @@ class MarkerObj {
     anchorLabel.textContent = 'Anchor:';
     anchorRow.appendChild(anchorLabel);
 
-    // Container for the anchor grid and image preview to display them side by side
+    // Container for the anchor grid and image on the same line
     const anchorContainer = document.createElement('div');
     anchorContainer.style.display = 'flex';
     anchorContainer.style.alignItems = 'center';
@@ -158,49 +176,61 @@ class MarkerObj {
         this.anchorX = pt.ax;
         this.anchorY = pt.ay;
         this.highlightAnchorCell(anchorCells, pt.ax, pt.ay);
-        // this.adjustPositionForAnchorChange(oldAnchorX, oldAnchorY, this.anchorX, this.anchorY);
+        // Note: We do NOT adjust marker position, as per original logic
+        // We never called adjustPositionForAnchorChange here.
         this.updateUIFields();
         this.regenerateMarker();
       });
-      
 
       anchorCells.push({ cell: cell, ax: pt.ax, ay: pt.ay });
       anchorGrid.appendChild(cell);
     });
 
-    // Image preview
     const imgContainer = document.createElement('div');
     imgContainer.className = 'marker-image';
     const imgEl = document.createElement('img');
     imgContainer.appendChild(imgEl);
 
-    // Append the grid and image to the container
     anchorContainer.appendChild(anchorGrid);
     anchorContainer.appendChild(imgContainer);
 
-    // Add the container to the anchor row
     anchorRow.appendChild(anchorContainer);
     container.appendChild(anchorRow);
 
+    // Remove the separate imageContainer to keep grid and image on the same line
+    /*
     // Image preview
     const imageContainer = document.createElement('div');
     imageContainer.className = 'marker-image';
-    const imageEl = document.createElement('img');
-    imageContainer.appendChild(imageEl);
+    const imageEl2 = document.createElement('img');
+    imageContainer.appendChild(imageEl2);
     container.appendChild(imageContainer);
+    */
 
     // Event listeners
     dictSelect.addEventListener('change', () => {
       this.dictionaryName = dictSelect.value;
+      if (this.dictionaryName === 'QR_CODE') {
+        // Switch ID input to text
+        idInput.type = 'text';
+        idInput.value = String(this.arucoId);
+      } else {
+        idInput.type = 'number';
+        idInput.value = parseInt(this.arucoId, 10) || 0;
+      }
       this.regenerateMarker();
     });
 
     idInput.addEventListener('change', () => {
-      const val = parseInt(idInput.value, 10);
-      if (!isNaN(val)) {
-        this.arucoId = val | 0;
-        this.regenerateMarker();
+      if (this.dictionaryName === 'QR_CODE') {
+        this.arucoId = idInput.value; // Treat as text
+      } else {
+        const val = parseInt(idInput.value, 10);
+        if (!isNaN(val)) {
+          this.arucoId = val | 0;
+        }
       }
+      this.regenerateMarker();
     });
 
     xInput.addEventListener('change', () => {
@@ -271,14 +301,6 @@ class MarkerObj {
     return nearest < multipleOf ? multipleOf : nearest; // ensure at least one cell
   }
 
-  adjustPositionForAnchorChange(oldAnchorX, oldAnchorY, newAnchorX, newAnchorY) {
-    // Calculate the shift needed to keep the anchor point fixed
-    const deltaX = (oldAnchorX - newAnchorX) * this.size;
-    const deltaY = (oldAnchorY - newAnchorY) * this.size;
-    this.x += deltaX;
-    this.y += deltaY;
-  }
-
   adjustPositionForScale(oldSize, newSize) {
     // Adjust position based on the change in size and current anchor
     const deltaSize = newSize - oldSize;
@@ -286,70 +308,128 @@ class MarkerObj {
     this.y -= this.anchorY * deltaSize;
   }
 
+  // Note: We do NOT call adjustPositionForAnchorChange from the anchor click event,
+  // leaving the original anchoring behavior intact.
+
+  highlightAnchorCell(cells, ax, ay) {
+    cells.forEach(c => {
+      c.cell.style.background = (c.ax === ax && c.ay === ay) ? '#ddd' : '#fff';
+    });
+  }
+
   regenerateMarker() {
     try {
-      const dic = new AR.Dictionary(this.dictionaryName);
-      if (this.arucoId > dic.codeList.length - 1) {
-        this.arucoId = dic.codeList.length - 1;
-        this.idInput.value = this.arucoId;
-      }
+      if (this.dictionaryName === 'QR_CODE') {
+        // Generate QR Code using the qrcode-generator library
+        const qr = qrcode(0, 'L'); // Type number 0, error correction level L
+        qr.addData(String(this.arucoId));
+        qr.make();
 
-      const markSize = dic.markSize;
-      this.currentMarkSize = markSize;
+        const count = qr.getModuleCount();
+        this.currentMarkSize = count;
+        this.scaleInput.step = this.currentMarkSize;
 
-      // Set step to markSize like old version
-      this.scaleInput.step = markSize;
+        const snapped = this.snapToMultiple(this.size, this.currentMarkSize);
+        if (snapped !== this.size) {
+          const oldSize = this.size;
+          this.size = snapped;
+          this.scaleInput.value = this.size;
+          this.adjustPositionForScale(oldSize, this.size);
+        }
 
-      const snapped = this.snapToMultiple(this.size, markSize);
-      if (snapped !== this.size) {
-        const oldSize = this.size;
-        this.size = snapped;
-        this.scaleInput.value = this.size;
-        this.adjustPositionForScale(oldSize, this.size);
-      }
+        const cellSize = Math.floor(this.size / count);
+        const qrSize = cellSize * count;
+        const offCanvas = document.createElement('canvas');
+        offCanvas.width = qrSize;
+        offCanvas.height = qrSize;
+        const offCtx = offCanvas.getContext('2d');
+        offCtx.fillStyle = '#FFFFFF'; // White background
+        offCtx.fillRect(0, 0, qrSize, qrSize);
+        offCtx.fillStyle = '#000000'; // Black modules
 
-      const code = dic.codeList[this.arucoId];
-      const cellSize = this.size / markSize;
-      const offCanvas = document.createElement('canvas');
-      offCanvas.width = this.size | 0;
-      offCanvas.height = this.size | 0;
-      const offCtx = offCanvas.getContext('2d');
-      offCtx.imageSmoothingEnabled = false;
-      offCtx.fillStyle = 'white';
-      offCtx.fillRect(0, 0, offCanvas.width, offCanvas.height);
-
-      // Borders black
-      offCtx.fillStyle = 'black';
-      offCtx.fillRect(0, 0, this.size, cellSize);
-      offCtx.fillRect(0, (markSize - 1) * cellSize, this.size, cellSize);
-      offCtx.fillRect(0, 0, cellSize, this.size);
-      offCtx.fillRect((markSize - 1) * cellSize, 0, cellSize, this.size);
-
-      const innerSize = markSize - 2;
-      for (let iy = 0; iy < innerSize; iy++) {
-        for (let ix = 0; ix < innerSize; ix++) {
-          const bit = code[iy * innerSize + ix];
-          if (bit === '0') {
-            offCtx.fillStyle = 'black';
-            offCtx.fillRect((ix + 1) * cellSize, (iy + 1) * cellSize, cellSize, cellSize);
+        for (let r = 0; r < count; r++) {
+          for (let c = 0; c < count; c++) {
+            if (qr.isDark(r, c)) {
+              offCtx.fillRect(c * cellSize, r * cellSize, cellSize, cellSize);
+            }
           }
         }
-      }
 
-      const dataURL = offCanvas.toDataURL('image/png');
-      const img = new Image();
-      img.onload = () => {
-        this.cachedImage = img;
-        if (this.imgEl) {
-          this.imgEl.src = dataURL;
+        const img = new Image();
+        img.onload = () => {
+          this.cachedImage = img;
+          if (this.imgEl) {
+            this.imgEl.src = offCanvas.toDataURL('image/png');
+          }
+          this.updateUIFields();
+          this.notifyUpdate();
+        };
+        img.src = offCanvas.toDataURL('image/png');
+
+      } else {
+        // Generate ARUCO Marker
+        const dic = new AR.Dictionary(this.dictionaryName);
+        if (this.arucoId > dic.codeList.length - 1) {
+          this.arucoId = dic.codeList.length - 1;
+          this.idInput.value = this.arucoId;
         }
-        // After regenerating, update fields and notify
-        this.updateUIFields();
-        this.notifyUpdate();
-      };
-      img.src = dataURL;
+
+        const markSize = dic.markSize;
+        this.currentMarkSize = markSize;
+        this.scaleInput.step = markSize;
+
+        const snapped = this.snapToMultiple(this.size, markSize);
+        if (snapped !== this.size) {
+          const oldSize = this.size;
+          this.size = snapped;
+          this.scaleInput.value = this.size;
+          this.adjustPositionForScale(oldSize, this.size);
+        }
+
+        const code = dic.codeList[this.arucoId];
+        const cellSize = this.size / markSize;
+        const offCanvas = document.createElement('canvas');
+        offCanvas.width = this.size | 0;
+        offCanvas.height = this.size | 0;
+        const offCtx = offCanvas.getContext('2d');
+        offCtx.imageSmoothingEnabled = false;
+        offCtx.fillStyle = 'white';
+        offCtx.fillRect(0, 0, offCanvas.width, offCanvas.height);
+
+        // Borders black
+        offCtx.fillStyle = 'black';
+        offCtx.fillRect(0, 0, this.size, cellSize);
+        offCtx.fillRect(0, (markSize - 1) * cellSize, this.size, cellSize);
+        offCtx.fillRect(0, 0, cellSize, this.size);
+        offCtx.fillRect((markSize - 1) * cellSize, 0, cellSize, this.size);
+
+        const innerSize = markSize - 2;
+        for (let iy = 0; iy < innerSize; iy++) {
+          for (let ix = 0; ix < innerSize; ix++) {
+            const bit = code[iy * innerSize + ix];
+            if (bit === '0') {
+              offCtx.fillStyle = 'black';
+              offCtx.fillRect((ix + 1) * cellSize, (iy + 1) * cellSize, cellSize, cellSize);
+            }
+          }
+        }
+
+        const dataURL = offCanvas.toDataURL('image/png');
+        const img = new Image();
+        img.onload = () => {
+          this.cachedImage = img;
+          if (this.imgEl) {
+            this.imgEl.src = dataURL;
+          }
+          // After regenerating, update fields and notify
+          this.updateUIFields();
+          this.notifyUpdate();
+        };
+        img.src = dataURL;
+      }
     } catch (e) {
-      alert(e);
+      alert(`Failed to generate marker: ${e.message}`);
+      console.error(e);
     }
   }
 
@@ -359,14 +439,8 @@ class MarkerObj {
     this.xInput.value = Math.round(displayedX);
     this.yInput.value = Math.round(displayedY);
     this.scaleInput.value = this.size;
-    this.idInput.value = this.arucoId;
+    this.idInput.value = (this.dictionaryName === 'QR_CODE') ? this.arucoId : (this.arucoId | 0);
     this.dictSelect.value = this.dictionaryName;
-  }
-
-  highlightAnchorCell(cells, ax, ay) {
-    cells.forEach(c => {
-      c.cell.style.background = (c.ax === ax && c.ay === ay) ? '#ddd' : '#fff';
-    });
   }
 
   notifyUpdate() {
@@ -374,7 +448,9 @@ class MarkerObj {
     this.x = Math.round(this.x);
     this.y = Math.round(this.y);
     this.size = Math.round(this.size);
-    this.arucoId = this.arucoId | 0;
+    if (this.dictionaryName !== 'QR_CODE') {
+      this.arucoId = this.arucoId | 0;
+    }
 
     // Update the UI fields based on the current anchor and position
     this.updateUIFields();
@@ -387,7 +463,7 @@ class MarkerObj {
   toJSON() {
     return {
       dictionaryName: this.dictionaryName,
-      arucoId: this.arucoId | 0,
+      arucoId: this.dictionaryName === 'QR_CODE' ? String(this.arucoId) : this.arucoId | 0,
       x: this.x | 0,
       y: this.y | 0,
       scale: this.size | 0,

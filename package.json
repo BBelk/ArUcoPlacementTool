@@ -12,7 +12,8 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "local-web-server": "^5.4.0"
+    "local-web-server": "^5.4.0",
+    "qrcode": "^1.5.4"
   },
   "devDependencies": {
     "gh-pages": "^6.2.0"
