@@ -17,7 +17,7 @@
 
 ## Description
 
-The **AR Tag Placement and Finder Tool** is a minimalist image editor designed for seamlessly placing augmented reality (AR) tags, such as ArUco and AprilTags, as well as QR codes, into images. This tool allows users to generate markers that can be easily positioned, scaled, and customized by selecting different dictionaries and IDs or data.
+The **AR Tag Placement and Finder Tool** is a minimalist image editor designed for placing augmented reality (AR) tags, such as ArUco and AprilTags, as well as QR codes, into images. This tool allows users to generate markers that can be easily positioned and scaled. Then, generated markers can be exported and imported for recreating precise positioning and ID's for markers.
 
 Key Features:
 - **Marker Management:** Create, edit, and manage AR tags and QR codes with precision.
@@ -64,7 +64,7 @@ The Placement Tool provides intuitive controls for customizing your AR tag layou
 Upload images to place within the canvas:
 - **Uploading:** Drag and drop or select image files to add them to the canvas.
 - **Image Object:** Each uploaded image appears as an Image Object, allowing for:
-  - **Positioning:** Drag the image around the canvas or enter precise X and Y coordinates.
+  - **Positioning:** Drag the image around the canvas or enter precise X and Y coordinates (anchored to top left of image).
   - **Scaling:** Adjust the image's width and height while maintaining its aspect ratio.
 
 ![Image Object](./readme-images/placement_tool_imageObj.png "Placement Tool Image Object")
@@ -97,20 +97,21 @@ Marker Object Features:
 ![Finder Tool Demo](./readme-images/placement_tool_finder_img1.png "Finder Tool Demo")
 
 The Finder Tool is a versatile feature designed for:
-- **Identifying Unknown Markers:** Locate specific AR tags or QR Codes within images.
+- **Identifying Unknown Markers:** Identify AR Tags with unknown IDs.
 - **Exploring Dictionaries:** Experiment with different dictionaries to understand marker patterns.
 
-### "Any" Usage:
+### Usage:
+-**Searching "Any" Dictionaries** For markers with unknown dictionaries
 - **Grid Selection:** Choose the grid size (excluding border squares) to match your marker's specifications.
 - **Manual Selection:** Click on grid cells to define the pattern you're searching for.
-- **Searching "Any"** Click the 'Check Marker" button to search through groups of dictionaries with matching selected size
+- **Cheking "Any"** Click the 'Check Marker" button to search through groups of dictionaries with matching selected size
 
-- **Dictionary Selection:** Opt for a specific dictionary or an "Any" group to broaden the search scope.
 - **Searching Specific Dictionary** The chosen specific dictionary is automatically searched when clicking cells in grid.
-  - **Performance:** Selecting a single dictionary ensures faster searching, while multiple dictionaries may cause performance delays.
+  - **Performance:** Selecting a single dictionary searches when cells are changed, while "Any" dictionaries require user input to search.
+
 - **Rotation:** Rotate the grid left or right to match markers with unknown orientations.
 
-> **Tip:** Use the Finder Tool to recover markers with forgotten IDs or to identify markers encountered in real-world applications.
+> **Tip:** Use the Finder Tool to recover markers with forgotten IDs or to identify markers encountered in the real-world.
 
 ## Acknowledgements
 
