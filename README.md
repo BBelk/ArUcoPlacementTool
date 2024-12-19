@@ -1,6 +1,6 @@
 # AR Tag Placement and Finder Tool
 
-## [Link to github-page hosted application](https://bbelk.github.io/ArUcoPlacementTool/)
+## [Link to github-page hosted application](https://bbelk.github.io/ARTagPlacementTool/)
 
 ## Table of Contents
 1. [Description](#description)
