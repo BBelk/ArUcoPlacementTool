@@ -49,7 +49,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Set default dictionary
-  dictionarySelect.value = 'ARUCO_MIP_36h12';
+  dictionarySelect.value = 'ARUCO';
   updateDictionary(dictionarySelect.value);
 
   // Event Listeners
