@@ -101,10 +101,10 @@ The Finder Tool is a versatile feature designed for:
 - **Exploring Dictionaries:** Experiment with different dictionaries to understand marker patterns.
 
 ### Usage:
--**Searching "Any" Dictionaries** For markers with unknown dictionaries
-- **Grid Selection:** Choose the grid size (excluding border squares) to match your marker's specifications.
-- **Manual Selection:** Click on grid cells to define the pattern you're searching for.
-- **Cheking "Any"** Click the 'Check Marker" button to search through groups of dictionaries with matching selected size
+- **Searching "Any" Dictionaries** For markers with unknown dictionaries
+   - **Grid Selection:** Choose the grid size (excluding border squares) to match your marker's specifications.
+   - **Manual Selection:** Click on grid cells to define the pattern you're searching for.
+   - **Cheking "Any"** Click the 'Check Marker" button to search through groups of dictionaries with matching selected size
 
 - **Searching Specific Dictionary** The chosen specific dictionary is automatically searched when clicking cells in grid.
   - **Performance:** Selecting a single dictionary searches when cells are changed, while "Any" dictionaries require user input to search.
